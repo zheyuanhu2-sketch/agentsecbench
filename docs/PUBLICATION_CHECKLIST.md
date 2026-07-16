@@ -17,6 +17,8 @@ current evidence; an old successful run does not cover later commits.
 - [x] Observe green CI for the candidate commit on Python 3.11 through 3.14.
 - [x] Pin Python dependencies in `uv.lock` and GitHub Actions by full commit SHA.
 - [x] Enable monthly dependency update review with Dependabot.
+- [x] Enable the dependency graph, Dependabot alerts, and automated security fixes; verify zero
+  open alerts for the candidate.
 - [x] Audit the locked dependency graph with no known advisories.
 - [x] Scan the complete Git history with a checksum-pinned Gitleaks release.
 - [x] Verify README commands, local links, versions, Changelog, and synthetic fixture conventions.

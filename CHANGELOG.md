@@ -17,6 +17,8 @@ All notable changes use semantic versioning while the repository remains in priv
   represented in the locked dependency graph.
 - Switch dependency updates to the uv-native, lockfile-only Dependabot ecosystem so automated
   updates preserve manifest constraints and produce `uv.lock` changes accepted by locked CI.
+- Enable the GitHub dependency graph, Dependabot vulnerability alerts, and automated security
+  fixes; the 0.8 candidate has no open dependency alerts.
 - Add a tag-gated workflow that reruns every quality and security check, requires byte-identical
   repeated builds, verifies a clean wheel install, and publishes SHA-256-checksummed GitHub assets.
 - Document the synthetic-data review, responsible disclosure path, release process, and remaining
