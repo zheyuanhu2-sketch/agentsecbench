@@ -13,6 +13,10 @@ All notable changes use semantic versioning while the repository remains in priv
   graph with `uv audit`.
 - Upgrade pytest to the fixed 9.x line after the dependency audit identified vulnerable temporary
   directory handling in 8.4.2.
+- Refresh the strict type and coverage toolchain to mypy 2.3 and pytest-cov 7.1, with all versions
+  represented in the locked dependency graph.
+- Switch dependency updates to the uv-native, lockfile-only Dependabot ecosystem so automated
+  updates preserve manifest constraints and produce `uv.lock` changes accepted by locked CI.
 - Add a tag-gated workflow that reruns every quality and security check, requires byte-identical
   repeated builds, verifies a clean wheel install, and publishes SHA-256-checksummed GitHub assets.
 - Document the synthetic-data review, responsible disclosure path, release process, and remaining

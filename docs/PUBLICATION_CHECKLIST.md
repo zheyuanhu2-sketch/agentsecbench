@@ -14,7 +14,7 @@ current evidence; an old successful run does not cover later commits.
 
 ## Automated quality and security
 
-- [ ] Observe green CI for the candidate commit on Python 3.11 through 3.14.
+- [x] Observe green CI for the candidate commit on Python 3.11 through 3.14.
 - [x] Pin Python dependencies in `uv.lock` and GitHub Actions by full commit SHA.
 - [x] Enable monthly dependency update review with Dependabot.
 - [x] Audit the locked dependency graph with no known advisories.
