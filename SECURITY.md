@@ -11,10 +11,11 @@
 
 Use GitHub's
 [private vulnerability report](https://github.com/zheyuanhu2-sketch/agentsecbench/security/advisories/new).
-Do not put security details in a public issue.
+Private vulnerability reporting is enabled for this repository. Do not put security details in a
+public issue.
 
-Until private vulnerability reporting is enabled, invited collaborators should create a draft
-repository security advisory and notify maintainer
+If that GitHub channel is unavailable, invited collaborators should create a draft repository
+security advisory and notify maintainer
 [`@zheyuanhu2-sketch`](https://github.com/zheyuanhu2-sketch). Include:
 
 - the affected commit;

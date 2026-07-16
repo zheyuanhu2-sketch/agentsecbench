@@ -111,6 +111,8 @@ publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component model and
 [`docs/SECURITY_ASSUMPTIONS.md`](docs/SECURITY_ASSUMPTIONS.md) for current boundaries.
+The verified public-release evidence is retained in
+[`docs/RELEASE_EVIDENCE_V1.0.0.md`](docs/RELEASE_EVIDENCE_V1.0.0.md).
 
 ## Safety
 

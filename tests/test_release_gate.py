@@ -40,6 +40,7 @@ def test_release_critical_files_are_tracked() -> None:
         "LICENSE",
         "README.md",
         "SECURITY.md",
+        "docs/RELEASE_EVIDENCE_V1.0.0.md",
         "docs/SHOWCASE.md",
         "examples/showcase/manifest.json",
         "examples/showcase/secure.result.json",
