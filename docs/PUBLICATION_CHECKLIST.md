@@ -1,7 +1,10 @@
 # v1.0 publication checklist
 
-Keep the GitHub repository private until every required item is complete. A checked item must have
+The GitHub repository remained private until every required item was complete. A checked item has
 current evidence; an old successful run does not cover later commits.
+
+The completed evidence record is
+[`RELEASE_EVIDENCE_V1.0.0.md`](RELEASE_EVIDENCE_V1.0.0.md).
 
 ## Repository contract
 
@@ -32,13 +35,13 @@ current evidence; an old successful run does not cover later commits.
 ## Release and public GitHub settings
 
 - [x] Add an exact-tag release workflow that reruns all gates and publishes `SHA256SUMS`.
-- [ ] Rotate the development provider key referenced in the private model-pilot notes.
-- [ ] Review and approve the exact v1.0.0 version, Changelog, and release commit.
-- [ ] Make the repository public after all other pre-publication items pass.
-- [ ] Enable and test GitHub private vulnerability reporting immediately after publication.
-- [ ] Enable a `main` ruleset requiring all CI jobs and blocking force push/deletion.
-- [ ] Push the exact `v1.0.0` tag and observe a green release workflow.
-- [ ] Publish and independently verify GitHub provenance attestations for both package archives.
-- [ ] Independently download and verify the wheel, source archive, and `SHA256SUMS`.
-- [ ] Verify repository visibility, default branch, license, topics, security settings, and release
+- [x] Rotate the development provider key referenced in the private model-pilot notes.
+- [x] Review and approve the exact v1.0.0 version, Changelog, and release commit.
+- [x] Make the repository public after all other pre-publication items pass.
+- [x] Enable and test GitHub private vulnerability reporting immediately after publication.
+- [x] Enable a `main` ruleset requiring all CI jobs and blocking force push/deletion.
+- [x] Push the exact `v1.0.0` tag and observe a green release workflow.
+- [x] Publish and independently verify GitHub provenance attestations for both package archives.
+- [x] Independently download and verify the wheel, source archive, and `SHA256SUMS`.
+- [x] Verify repository visibility, default branch, license, topics, security settings, and release
   presentation from a signed-out browser session.

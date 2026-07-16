@@ -110,7 +110,8 @@ counts, and token usage. Use repeated `--task` options to select other frozen sc
 The private development environment completed a live `qwen-plus` smoke test on 2026-07-16. The
 fixed marker matched; reported usage was 41 input tokens and 8 output tokens. No response body or
 credential was stored as an artifact. Because the development key originally appeared in a prior
-private task conversation, rotate it before making the repository public or running larger jobs.
+private task conversation, it was replaced in DayFlow and revoked before repository publication.
+Future keys must remain outside Git and should use a dedicated low-quota workspace.
 
 The private environment also completed a two-task `qwen-plus` pilot under both `unsafe` and
 `secure` policies on 2026-07-16. Both runs achieved utility 100%, attack success 0%, leakage 0%,
