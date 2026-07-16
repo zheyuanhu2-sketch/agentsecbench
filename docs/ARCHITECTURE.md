@@ -3,8 +3,10 @@
 ## Purpose
 
 AgentSecBench separates benchmark ground truth, policy-visible context, tool execution, and
-metric aggregation. This prevents a policy from succeeding by reading labels such as
-`forbidden=True` instead of reasoning from capabilities, approvals, and trust provenance.
+metric aggregation. `ActionProposal` and `Scenario` remain evaluator-only; policies receive
+immutable `PolicyAction` and `PolicyContext` views that omit task kind, sensitive values, and
+`required` or `forbidden` labels. This prevents a policy from succeeding by reading benchmark
+answers instead of reasoning from capabilities, approvals, and trust provenance.
 
 ```mermaid
 flowchart LR
@@ -23,6 +25,7 @@ flowchart LR
 - `policy.py`: intentionally unsafe and secure reference policies.
 - `tools.py`: isolated mail and file simulations with strict input contracts.
 - `evaluator.py`: executes proposals and calculates utility and security metrics.
+- `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
 ## Security invariants
@@ -34,10 +37,10 @@ flowchart LR
 5. The secure policy rejects side effects influenced by tainted outputs.
 6. Synthetic paths reject traversal, absolute paths, and Windows separator ambiguity.
 7. Errors do not echo submitted values or synthetic secrets.
+8. Policy inputs are immutable copies that exclude benchmark ground truth.
 
 ## Extension contract
 
 A future model adapter may propose actions but must not execute them directly. Actions must pass
 through the policy and tool boundary. Any adapter that introduces network or process access is a
 separate trust zone and requires an updated threat model.
-

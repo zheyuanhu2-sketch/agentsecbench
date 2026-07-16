@@ -5,6 +5,8 @@ from agentsecbench.evaluator import evaluate_scenario
 from agentsecbench.models import (
     ActionProposal,
     ActionStatus,
+    PolicyAction,
+    PolicyContext,
     Scenario,
     TaskKind,
     TaskPolicy,
@@ -59,7 +61,7 @@ def test_secure_policy_rejects_tool_outside_capabilities() -> None:
     action = ActionProposal("a1", "mail.read", {"message_id": "m1"})
     scenario = _blank_scenario(action, TaskPolicy(allowed_tools=frozenset()))
 
-    decision = SecurePolicy().decide(scenario, action, {})
+    decision = SecurePolicy().decide(scenario.policy_context(), action.policy_view(), {})
 
     assert decision.allowed is False
     assert "capability" in decision.reason
@@ -78,7 +80,7 @@ def test_secure_policy_rejects_missing_approval_and_external_recipient() -> None
     )
     scenario = _blank_scenario(action, policy)
 
-    no_approval = SecurePolicy().decide(scenario, action, {})
+    no_approval = SecurePolicy().decide(scenario.policy_context(), action.policy_view(), {})
     assert no_approval.allowed is False
     assert "approval" in no_approval.reason
 
@@ -86,7 +88,7 @@ def test_secure_policy_rejects_missing_approval_and_external_recipient() -> None
         scenario,
         policy=replace(policy, approved_action_ids=frozenset({"send"})),
     )
-    external = SecurePolicy().decide(approved, action, {})
+    external = SecurePolicy().decide(approved.policy_context(), action.policy_view(), {})
     assert external.allowed is False
     assert "recipient" in external.reason
 
@@ -103,12 +105,14 @@ def test_secure_policy_rejects_missing_evidence_and_write_scope() -> None:
     )
     scenario = _blank_scenario(action, policy)
 
-    unavailable = SecurePolicy().decide(scenario, action, {})
+    unavailable = SecurePolicy().decide(scenario.policy_context(), action.policy_view(), {})
     assert unavailable.allowed is False
     assert "unavailable" in unavailable.reason
 
     out_of_scope = SecurePolicy().decide(
-        scenario, action, {"read": ToolOutput("safe", tainted=False)}
+        scenario.policy_context(),
+        action.policy_view(),
+        {"read": ToolOutput("safe", tainted=False)},
     )
     assert out_of_scope.allowed is False
     assert "prefixes" in out_of_scope.reason
@@ -121,7 +125,32 @@ def test_secure_policy_rejects_invalid_write_path() -> None:
         TaskPolicy(allowed_tools=frozenset({"file.write"}), writable_path_prefixes=("reports/",)),
     )
 
-    decision = SecurePolicy().decide(scenario, action, {})
+    decision = SecurePolicy().decide(scenario.policy_context(), action.policy_view(), {})
 
     assert decision.allowed is False
     assert "invalid" in decision.reason
+
+
+def test_policy_types_do_not_expose_benchmark_ground_truth() -> None:
+    context = PolicyContext(
+        goal="Read a message.",
+        policy=TaskPolicy(allowed_tools=frozenset({"mail.read"})),
+    )
+    action = PolicyAction("read", "mail.read", {"message_id": "m1"})
+
+    assert not hasattr(context, "kind")
+    assert not hasattr(context, "sensitive_values")
+    assert not hasattr(context, "actions")
+    assert not hasattr(action, "required")
+    assert not hasattr(action, "forbidden")
+
+
+def test_policy_cannot_mutate_action_arguments() -> None:
+    action = PolicyAction("read", "mail.read", {"message_id": "m1"})
+
+    try:
+        action.arguments["message_id"] = "changed"  # type: ignore[index]
+    except TypeError:
+        pass
+    else:
+        raise AssertionError("policy-visible arguments must be immutable")

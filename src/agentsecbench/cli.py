@@ -11,6 +11,7 @@ from agentsecbench.catalog import build_catalog
 from agentsecbench.evaluator import evaluate_catalog
 from agentsecbench.models import EvaluationSummary
 from agentsecbench.policy import policy_from_name
+from agentsecbench.validation import catalog_fingerprint
 
 
 def _summary_dict(summary: EvaluationSummary) -> dict[str, object]:
@@ -42,6 +43,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("compare", help="Compare unsafe and secure policies.")
     subparsers.add_parser("list", help="List scenario identifiers and kinds.")
+    subparsers.add_parser("fingerprint", help="Print the stable catalog SHA-256 digest.")
     return parser
 
 
@@ -53,6 +55,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if command == "list":
         for scenario in catalog:
             print(f"{scenario.task_id}\t{scenario.kind.value}\t{scenario.goal}")
+        return 0
+
+    if command == "fingerprint":
+        print(catalog_fingerprint(catalog))
         return 0
 
     if command == "evaluate":

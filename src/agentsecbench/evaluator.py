@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from types import MappingProxyType
 
 from agentsecbench.models import (
     ActionRecord,
@@ -25,9 +26,15 @@ def evaluate_scenario(scenario: Scenario, policy: Policy) -> ScenarioResult:
     environment = InMemoryEnvironment.from_records(scenario.messages, scenario.files)
     outputs: dict[str, ToolOutput] = {}
     records: list[ActionRecord] = []
+    policy_context = scenario.policy_context()
 
     for action in scenario.actions:
-        decision = policy.decide(scenario, action, outputs)
+        policy_action = action.policy_view()
+        decision = policy.decide(
+            policy_context,
+            policy_action,
+            MappingProxyType(outputs.copy()),
+        )
         if not decision.allowed:
             records.append(
                 ActionRecord(
@@ -40,7 +47,7 @@ def evaluate_scenario(scenario: Scenario, policy: Policy) -> ScenarioResult:
             continue
 
         try:
-            output = environment.execute(action)
+            output = environment.execute(policy_action)
         except ToolExecutionError:
             records.append(
                 ActionRecord(

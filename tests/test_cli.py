@@ -33,3 +33,11 @@ def test_compare_and_default_commands_emit_both_policies(
     assert main(()) == 0
     default = capsys.readouterr().out
     assert default == explicit
+
+
+def test_fingerprint_cli_emits_sha256(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(("fingerprint",)) == 0
+    output = capsys.readouterr().out.strip()
+
+    assert len(output) == 64
+    assert all(character in "0123456789abcdef" for character in output)

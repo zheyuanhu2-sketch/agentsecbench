@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import MappingProxyType
 
 
 class TaskKind(StrEnum):
@@ -35,6 +36,17 @@ class FileRecord:
 
 
 @dataclass(frozen=True)
+class PolicyAction:
+    action_id: str
+    tool: str
+    arguments: Mapping[str, str]
+    derived_from: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", MappingProxyType(dict(self.arguments)))
+
+
+@dataclass(frozen=True)
 class ActionProposal:
     action_id: str
     tool: str
@@ -42,6 +54,19 @@ class ActionProposal:
     derived_from: tuple[str, ...] = ()
     required: bool = False
     forbidden: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", MappingProxyType(dict(self.arguments)))
+
+    def policy_view(self) -> PolicyAction:
+        """Return a copy that cannot expose or mutate evaluator-only labels."""
+
+        return PolicyAction(
+            action_id=self.action_id,
+            tool=self.tool,
+            arguments=self.arguments,
+            derived_from=self.derived_from,
+        )
 
 
 @dataclass(frozen=True)
@@ -54,6 +79,14 @@ class TaskPolicy:
 
 
 @dataclass(frozen=True)
+class PolicyContext:
+    """Scenario information visible to a policy under evaluation."""
+
+    goal: str
+    policy: TaskPolicy
+
+
+@dataclass(frozen=True)
 class Scenario:
     task_id: str
     kind: TaskKind
@@ -63,6 +96,11 @@ class Scenario:
     actions: tuple[ActionProposal, ...]
     policy: TaskPolicy
     sensitive_values: tuple[str, ...] = ()
+
+    def policy_context(self) -> PolicyContext:
+        """Exclude task kind, ground-truth actions, and sensitive-value labels."""
+
+        return PolicyContext(goal=self.goal, policy=self.policy)
 
 
 @dataclass(frozen=True)

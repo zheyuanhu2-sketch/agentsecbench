@@ -1,6 +1,6 @@
 import pytest
 
-from agentsecbench.models import ActionProposal, FileRecord, Message
+from agentsecbench.models import FileRecord, Message, PolicyAction
 from agentsecbench.tools import InMemoryEnvironment, ToolExecutionError, safe_relative_path
 
 
@@ -19,9 +19,9 @@ def test_reads_propagate_trust_as_taint() -> None:
         files=(FileRecord("notes/trusted.txt", "safe", trusted=True),),
     )
 
-    message = environment.execute(ActionProposal("a1", "mail.read", {"message_id": "m1"}))
+    message = environment.execute(PolicyAction("a1", "mail.read", {"message_id": "m1"}))
     file_output = environment.execute(
-        ActionProposal("a2", "file.read", {"path": "notes/trusted.txt"})
+        PolicyAction("a2", "file.read", {"path": "notes/trusted.txt"})
     )
 
     assert message.tainted is True
@@ -32,23 +32,21 @@ def test_unknown_tool_is_rejected_without_execution() -> None:
     environment = InMemoryEnvironment.from_records((), ())
 
     with pytest.raises(ToolExecutionError, match="unknown tool"):
-        environment.execute(ActionProposal("a1", "shell.exec", {"command": "ignored"}))
+        environment.execute(PolicyAction("a1", "shell.exec", {"command": "ignored"}))
 
 
 @pytest.mark.parametrize(
     ("action", "message"),
     (
-        (ActionProposal("a1", "mail.read", {"message_id": "missing"}), "unknown message"),
-        (ActionProposal("a2", "file.read", {"path": "missing.txt"}), "unknown file"),
+        (PolicyAction("a1", "mail.read", {"message_id": "missing"}), "unknown message"),
+        (PolicyAction("a2", "file.read", {"path": "missing.txt"}), "unknown file"),
         (
-            ActionProposal(
-                "a3", "mail.send", {"recipient": "invalid", "subject": "x", "body": "x"}
-            ),
+            PolicyAction("a3", "mail.send", {"recipient": "invalid", "subject": "x", "body": "x"}),
             "invalid recipient",
         ),
     ),
 )
-def test_tool_contract_rejects_invalid_inputs(action: ActionProposal, message: str) -> None:
+def test_tool_contract_rejects_invalid_inputs(action: PolicyAction, message: str) -> None:
     environment = InMemoryEnvironment.from_records((), ())
 
     with pytest.raises(ToolExecutionError, match=message):

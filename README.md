@@ -44,6 +44,7 @@ uv run agentsecbench list
 uv run agentsecbench evaluate --policy secure
 uv run agentsecbench evaluate --policy unsafe --json
 uv run agentsecbench compare
+uv run agentsecbench fingerprint
 ```
 
 ## Project status
@@ -62,4 +63,3 @@ instructions that cause real external side effects. Report security concerns usi
 ## License
 
 MIT
-

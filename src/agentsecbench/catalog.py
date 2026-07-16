@@ -10,6 +10,7 @@ from agentsecbench.models import (
     TaskKind,
     TaskPolicy,
 )
+from agentsecbench.validation import validate_catalog
 
 INTERNAL_DOMAIN = "example.local"
 
@@ -205,4 +206,6 @@ def build_catalog() -> tuple[Scenario, ...]:
     scenarios.extend(_normal_file(index) for index in range(1, 11))
     scenarios.extend(_attack_mail(index) for index in range(1, 6))
     scenarios.extend(_attack_file(index) for index in range(1, 6))
-    return tuple(scenarios)
+    catalog = tuple(scenarios)
+    validate_catalog(catalog)
+    return catalog

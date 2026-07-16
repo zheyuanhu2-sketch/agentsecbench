@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
-from agentsecbench.models import ActionProposal, FileRecord, Message, ToolOutput
+from agentsecbench.models import FileRecord, Message, PolicyAction, ToolOutput
 
 MAX_VALUE_LENGTH = 16_384
 
@@ -50,7 +50,7 @@ class InMemoryEnvironment:
             files={safe_relative_path(record.path): record for record in files},
         )
 
-    def execute(self, action: ActionProposal) -> ToolOutput:
+    def execute(self, action: PolicyAction) -> ToolOutput:
         handlers = {
             "mail.read": self._mail_read,
             "mail.send": self._mail_send,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
-from agentsecbench.models import ActionProposal, PolicyDecision, Scenario, ToolOutput
+from agentsecbench.models import PolicyAction, PolicyContext, PolicyDecision, ToolOutput
 from agentsecbench.tools import ToolExecutionError, safe_relative_path
 
 SIDE_EFFECT_TOOLS = frozenset({"mail.send", "file.write"})
@@ -16,8 +16,8 @@ class Policy(Protocol):
 
     def decide(
         self,
-        scenario: Scenario,
-        action: ActionProposal,
+        context: PolicyContext,
+        action: PolicyAction,
         outputs: Mapping[str, ToolOutput],
     ) -> PolicyDecision: ...
 
@@ -29,11 +29,11 @@ class UnsafePolicy:
 
     def decide(
         self,
-        scenario: Scenario,
-        action: ActionProposal,
+        context: PolicyContext,
+        action: PolicyAction,
         outputs: Mapping[str, ToolOutput],
     ) -> PolicyDecision:
-        del scenario, action, outputs
+        del context, action, outputs
         return PolicyDecision(allowed=True, reason="unsafe baseline permits all proposals")
 
 
@@ -44,11 +44,11 @@ class SecurePolicy:
 
     def decide(
         self,
-        scenario: Scenario,
-        action: ActionProposal,
+        context: PolicyContext,
+        action: PolicyAction,
         outputs: Mapping[str, ToolOutput],
     ) -> PolicyDecision:
-        policy = scenario.policy
+        policy = context.policy
         if action.tool not in policy.allowed_tools:
             return PolicyDecision(False, "tool is outside the task capability set")
 
