@@ -17,7 +17,13 @@ from agentsecbench.adapters import (
 )
 from agentsecbench.catalog import build_catalog
 from agentsecbench.evaluator import evaluate_catalog
-from agentsecbench.models import EvaluationSummary
+from agentsecbench.model_runner import (
+    MAX_DECISION_BYTES,
+    MAX_TURNS,
+    ModelEvaluationSummary,
+    evaluate_model_scenarios,
+)
+from agentsecbench.models import EvaluationSummary, Scenario
 from agentsecbench.policy import policy_from_name
 from agentsecbench.validation import catalog_fingerprint
 
@@ -36,6 +42,56 @@ def _print_summary(summary: EvaluationSummary) -> None:
     print(f"Attack success: {summary.attack_success_rate:.0%}")
     print(f"False blocks: {summary.false_block_rate:.0%}")
     print(f"Leakage: {summary.leakage_rate:.0%}")
+
+
+def _model_summary_dict(summary: ModelEvaluationSummary) -> dict[str, object]:
+    return {
+        "policy": summary.policy,
+        "adapter_id": summary.adapter_id,
+        "model_id": summary.model_id,
+        "total_tasks": summary.total_tasks,
+        "normal_tasks": summary.normal_tasks,
+        "attack_tasks": summary.attack_tasks,
+        "utility_success_rate": summary.utility_success_rate,
+        "attack_success_rate": summary.attack_success_rate,
+        "false_block_rate": summary.false_block_rate,
+        "leakage_rate": summary.leakage_rate,
+        "input_tokens": summary.input_tokens,
+        "output_tokens": summary.output_tokens,
+        "tasks": [
+            {
+                "task_id": run.result.task_id,
+                "kind": run.result.kind.value,
+                "utility_success": run.result.utility_success,
+                "attack_success": run.result.attack_success,
+                "false_block": run.result.false_block,
+                "leakage": run.result.leakage,
+                "turns": run.turns,
+                "finished": run.finished,
+                "protocol_errors": run.protocol_errors,
+            }
+            for run in summary.runs
+        ],
+    }
+
+
+def _print_model_summary(summary: ModelEvaluationSummary) -> None:
+    print(f"Adapter: {summary.adapter_id}")
+    print(f"Model: {summary.model_id}")
+    print(f"Policy: {summary.policy}")
+    for run in summary.runs:
+        result = run.result
+        print(
+            f"Task: {result.task_id} | utility={result.utility_success} "
+            f"attack={result.attack_success} leakage={result.leakage} "
+            f"turns={run.turns} finished={run.finished} "
+            f"protocol_errors={run.protocol_errors}"
+        )
+    print(f"Utility success: {summary.utility_success_rate:.0%}")
+    print(f"Attack success: {summary.attack_success_rate:.0%}")
+    print(f"False blocks: {summary.false_block_rate:.0%}")
+    print(f"Leakage: {summary.leakage_rate:.0%}")
+    print(f"Tokens: {summary.input_tokens} input, {summary.output_tokens} output")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -62,7 +118,44 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Explicitly approve one outbound request to the configured Bailian host.",
     )
+    bailian_evaluate = subparsers.add_parser(
+        "bailian-evaluate",
+        help="Run a bounded synthetic model/tool evaluation through Bailian.",
+    )
+    bailian_evaluate.add_argument("--policy", choices=("unsafe", "secure"), default="secure")
+    bailian_evaluate.add_argument(
+        "--task",
+        action="append",
+        dest="tasks",
+        help=(
+            "Scenario identifier to evaluate; repeat up to four times. Defaults to one normal "
+            "mail task and one indirect-injection mail task."
+        ),
+    )
+    bailian_evaluate.add_argument("--max-turns", type=int, default=4)
+    bailian_evaluate.add_argument("--json", action="store_true")
+    bailian_evaluate.add_argument(
+        "--approve-network",
+        action="store_true",
+        required=True,
+        help="Explicitly approve the bounded outbound model requests for this run.",
+    )
     return parser
+
+
+def _select_model_scenarios(
+    task_ids: Sequence[str] | None,
+) -> tuple[Scenario, ...]:
+    catalog = build_catalog()
+    requested = tuple(task_ids or ("normal-mail-01", "attack-mail-01"))
+    if not requested or len(requested) > 4:
+        raise ValueError("select between one and four model-evaluation tasks")
+    if len(requested) != len(set(requested)):
+        raise ValueError("model-evaluation task identifiers must be unique")
+    by_id = {scenario.task_id: scenario for scenario in catalog}
+    if any(task_id not in by_id for task_id in requested):
+        raise ValueError("unknown model-evaluation task identifier")
+    return tuple(by_id[task_id] for task_id in requested)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -112,6 +205,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Output tokens: {response.output_tokens}")
         print(f"Expected content: {matches}")
         return 0 if matches else 1
+
+    if command == "bailian-evaluate":
+        try:
+            scenarios = _select_model_scenarios(args.tasks)
+            if not 1 <= args.max_turns <= MAX_TURNS:
+                raise ValueError(f"max-turns must be between 1 and {MAX_TURNS}")
+            max_requests = len(scenarios) * args.max_turns
+            max_total_input_bytes = max_requests * 32_768
+            limits = BudgetLimits(
+                max_requests=max_requests,
+                max_input_bytes_per_request=32_768,
+                max_total_input_bytes=max_total_input_bytes,
+                max_output_tokens_per_request=256,
+                max_total_tokens=max_total_input_bytes + max_requests * 256,
+                max_response_bytes=MAX_DECISION_BYTES,
+                timeout_seconds=30.0,
+            )
+            model_summary = evaluate_model_scenarios(
+                scenarios,
+                policy_from_name(args.policy),
+                BailianChatAdapter.from_environment(limits),
+                BudgetLedger(limits),
+                max_turns=args.max_turns,
+                max_output_tokens=256,
+            )
+        except (AdapterError, ValueError) as error:
+            print(f"Bailian evaluation failed: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(_model_summary_dict(model_summary), indent=2, sort_keys=True))
+        else:
+            _print_model_summary(model_summary)
+        return 0
 
     if command == "evaluate":
         summary = evaluate_catalog(catalog, policy_from_name(args.policy))

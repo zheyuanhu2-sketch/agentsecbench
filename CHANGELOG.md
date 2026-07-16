@@ -1,0 +1,21 @@
+# Changelog
+
+All notable changes use semantic versioning while the repository remains in private development.
+
+## 0.3.0 - 2026-07-16
+
+- Add a bounded, strict-JSON model/tool evaluation loop.
+- Derive action provenance in the runtime instead of trusting model output.
+- Hide evaluator action names, approvals, and provenance behind opaque policy identifiers.
+- Add opt-in Bailian normal/attack evaluation with safe metadata-only output.
+- Add offline malicious-model regression tests and document the first two-task `qwen-plus` pilot.
+
+## 0.2.0 - 2026-07-16
+
+- Add provider-neutral model adapters, resource budgets, secret redaction, and exact-host HTTPS.
+- Add the opt-in Alibaba Cloud Model Studio `qwen-plus` adapter and smoke check.
+
+## 0.1.0 - 2026-07-15
+
+- Freeze 30 synthetic mail/file scenarios and their catalog fingerprint.
+- Add unsafe and secure reference policies, in-memory tools, metrics, CI, and a threat model.

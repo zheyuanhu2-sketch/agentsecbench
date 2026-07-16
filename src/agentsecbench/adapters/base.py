@@ -138,7 +138,10 @@ class BudgetLedger:
 
 
 class ModelAdapter(Protocol):
-    adapter_id: str
-    model_id: str
+    @property
+    def adapter_id(self) -> str: ...
+
+    @property
+    def model_id(self) -> str: ...
 
     def complete(self, request: ModelRequest, budget: BudgetLedger) -> ModelResponse: ...

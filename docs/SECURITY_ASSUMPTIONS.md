@@ -7,9 +7,10 @@ This is the confirmed operating-boundary record for private development.
 - One trusted developer runs the benchmark locally.
 - The repository contains synthetic data only.
 - There is no internet-facing service, authentication system, or multi-tenant state.
-- One explicitly approved CLI command may call the configured Alibaba Cloud Model Studio
-  Workspace endpoint with a fixed synthetic smoke-test prompt.
-- The deterministic action plans are benchmark fixtures, not model-generated content.
+- Explicitly approved CLI commands may call the configured Alibaba Cloud Model Studio Workspace
+  endpoint with fixed synthetic benchmark context.
+- Deterministic action plans remain benchmark fixtures. The model runner may also generate strict
+  tool decisions, but it cannot execute tools directly or attest its own provenance.
 - The in-memory tools are the complete runtime side-effect boundary.
 - A compromised Python interpreter, dependency, CI runner, or developer workstation is out of
   scope for private development, but supply-chain controls remain part of the publication gate.
@@ -18,6 +19,7 @@ This is the confirmed operating-boundary record for private development.
 
 - Exposing a local or public web service.
 - Whether additional model providers will be called and how each provider handles retention.
+- Persisting raw model transcripts or running a paid batch larger than the bounded CLI selection.
 - Executing untrusted code or connecting to real mail, files, databases, browsers, or shells.
 
 Changing any of these assumptions requires a threat-model update before implementation.

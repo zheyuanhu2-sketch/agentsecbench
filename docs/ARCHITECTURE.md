@@ -11,6 +11,11 @@ answers instead of reasoning from capabilities, approvals, and trust provenance.
 ```mermaid
 flowchart LR
     C["Synthetic catalog"] --> R["Deterministic runner"]
+    C --> MR["Bounded model runner"]
+    A["Opt-in model adapter"] --> MR
+    MR --> B["Opaque policy session"]
+    B --> P
+    MR --> T
     R --> P["Policy under test"]
     P --> R
     R --> T["In-memory tools"]
@@ -25,6 +30,9 @@ flowchart LR
 - `policy.py`: intentionally unsafe and secure reference policies.
 - `tools.py`: isolated mail and file simulations with strict input contracts.
 - `evaluator.py`: executes proposals and calculates utility and security metrics.
+- `boundary.py`: maps evaluator-owned action, approval, and provenance IDs to opaque policy IDs.
+- `model_runner.py`: validates model decisions, derives provenance, mediates actions, and aggregates
+  model-run metadata.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
@@ -38,6 +46,8 @@ flowchart LR
 6. Synthetic paths reject traversal, absolute paths, and Windows separator ambiguity.
 7. Errors do not echo submitted values or synthetic secrets.
 8. Policy inputs are immutable copies that exclude benchmark ground truth.
+9. Model output cannot declare action IDs or provenance; both are assigned by the runtime.
+10. Policy-visible identifiers are opaque and stable only within one scenario run.
 
 ## Extension contract
 

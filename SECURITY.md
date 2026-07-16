@@ -18,7 +18,8 @@ Never include credentials, personal data, live exploit targets, or destructive p
 
 ## Current safety boundary
 
-The v0.1 runtime is an in-memory simulation. A benchmark run must not access the network, spawn
-processes, or read and write host files. Any adapter that adds those capabilities requires a new
-threat-model review and explicit operator approval before merge.
-
+The tool runtime is an in-memory simulation. Deterministic runs do not access the network. Opt-in
+model commands may send synthetic prompts to an exact allowlisted Model Studio HTTPS endpoint only
+after explicit operator approval. Model-generated actions cannot spawn processes or read and write
+host files. Any adapter or tool that broadens those capabilities requires a new threat-model review
+and explicit operator approval before merge.

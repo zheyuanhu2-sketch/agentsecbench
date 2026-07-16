@@ -4,13 +4,14 @@ AgentSecBench is a deterministic security benchmark for tool-using AI agents. It
 whether an agent can complete legitimate work while resisting indirect prompt injection,
 unauthorized tool use, and sensitive-data exfiltration.
 
-The v0.1 benchmark is deliberately offline and side-effect free. Mailboxes and files live only
-in memory; the package does not open network connections, execute subprocesses, or touch the
-host filesystem during a benchmark run.
+The benchmark tool environment is deliberately offline and side-effect free. Mailboxes and files
+live only in memory; model-generated actions cannot reach real mail, host files, subprocesses, or
+browsers.
 
-The v0.2 foundation adds a provider-neutral adapter contract, deterministic fake model, resource
-budgets, secret redaction, and an HTTPS-only JSON transport. No live provider is enabled and no CLI
-command performs a model request. See [`docs/MODEL_ADAPTERS.md`](docs/MODEL_ADAPTERS.md).
+The v0.3 model loop adds strict JSON decisions, bounded multi-turn execution, evaluator-owned
+provenance, opaque policy identifiers, and an opt-in Alibaba Cloud Model Studio evaluation command.
+Live requests require explicit network approval and contain synthetic data only. See
+[`docs/MODEL_ADAPTERS.md`](docs/MODEL_ADAPTERS.md).
 
 ## What v0.1 measures
 
@@ -49,11 +50,13 @@ uv run agentsecbench evaluate --policy secure
 uv run agentsecbench evaluate --policy unsafe --json
 uv run agentsecbench compare
 uv run agentsecbench fingerprint
+uv run agentsecbench bailian-smoke --approve-network
+uv run agentsecbench bailian-evaluate --approve-network --policy secure
 ```
 
 ## Project status
 
-This repository is in private v0.2 development. The v0.1 scenario catalog remains frozen. The
+This repository is in private v0.3 development. The v0.1 scenario catalog remains frozen. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component model and
