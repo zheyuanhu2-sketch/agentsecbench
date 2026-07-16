@@ -6,8 +6,15 @@ Only the latest commit on the default branch is supported during private develop
 
 ## Reporting a vulnerability
 
-Do not open a public issue for a vulnerability before the repository publication gate is
-complete. Contact the repository owner privately with:
+After publication, use GitHub's
+[private vulnerability report](https://github.com/zheyuanhu2-sketch/agentsecbench/security/advisories/new).
+GitHub Free exposes that setting only after the repository becomes public, so the channel must be
+enabled and tested immediately after the visibility transition and before the v1.0 announcement.
+Do not put security details in a public issue.
+
+During private development, invited collaborators should create a draft repository security
+advisory and notify maintainer
+[`@zheyuanhu2-sketch`](https://github.com/zheyuanhu2-sketch). Include:
 
 - the affected commit;
 - a minimal reproduction using synthetic data;
@@ -15,6 +22,11 @@ complete. Contact the repository owner privately with:
 - potential impact and suggested mitigation.
 
 Never include credentials, personal data, live exploit targets, or destructive payloads.
+
+The maintainer aims to acknowledge a report within three business days, complete initial triage
+within seven business days, and provide a status update at least every fourteen days until it is
+resolved. Publication and credit are coordinated with the reporter; there is no promise of a bug
+bounty.
 
 ## Current safety boundary
 

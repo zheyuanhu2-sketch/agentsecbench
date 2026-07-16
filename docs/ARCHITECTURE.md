@@ -43,6 +43,10 @@ flowchart LR
   and OpenAI-compatible local inference without exposing an arbitrary URL client.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
+- `scripts/release_gate.py`: validates source claims, package archive safety and metadata,
+  reproducibility, and release checksums without joining the runtime wheel.
+- `.github/workflows/ci.yml` and `release.yml`: separate read-only continuous validation from the
+  exact-tag, write-enabled, checksummed GitHub release boundary.
 
 ## Security invariants
 
@@ -66,6 +70,10 @@ flowchart LR
     ports; hostnames, LAN addresses, TLS URLs, credentials in URLs, and redirects are rejected.
 15. Model result v2 assigns an explicit trial UUID so byte-identical temperature-zero responses
     can remain distinct auditable provider calls.
+16. Ordinary CI is read-only; only an exact semantic-version tag can enter the write-enabled
+    release job, which reruns all quality and security gates before publication.
+17. Release packages must pass bounded archive/metadata checks, install in isolation, and match a
+    second build byte-for-byte before canonical SHA-256 checksums are published.
 
 ## Extension contract
 

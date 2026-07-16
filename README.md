@@ -29,6 +29,12 @@ content-free experiment summary. See [`docs/STATISTICS.md`](docs/STATISTICS.md).
 The v0.7 execution layer adds a loopback-only OpenAI-compatible adapter for local GPU inference,
 trial-identified `result.v2` artifacts, and a bounded two-to-five-trial Bailian batch workflow.
 
+The v0.8 release layer adds Python 3.11-3.14 CI, locked dependency auditing, complete-history
+secret scanning, source/distribution contract checks, byte-reproducible builds, isolated wheel
+installation, and a checksum-producing exact-tag release workflow. See
+[`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md) and the
+[`synthetic-data review`](docs/DATA_REVIEW.md).
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -43,9 +49,10 @@ trial-identified `result.v2` artifacts, and a bounded two-to-five-trial Bailian 
 Prerequisite: [`uv`](https://docs.astral.sh/uv/).
 
 ```powershell
-uv sync --dev
+uv sync --locked --dev
 uv run agentsecbench compare
 uv run pytest --cov=agentsecbench --cov-report=term-missing
+uv run python scripts/release_gate.py source
 ```
 
 Expected comparison for the deterministic catalog:
@@ -82,7 +89,8 @@ uv run agentsecbench bailian-batch --approve-network --trials 2 `
 
 ## Project status
 
-This repository is in private v0.7 development. The v0.1 built-in scenario catalog remains frozen.
+This repository is in private v0.8 development toward v1.0.0. The v0.1 built-in scenario catalog
+remains frozen.
 External catalogs use a separate versioned contract. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See

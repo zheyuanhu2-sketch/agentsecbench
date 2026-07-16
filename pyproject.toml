@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentsecbench"
-version = "0.7.0"
+version = "0.8.0"
 description = "A deterministic security benchmark for tool-using AI agents."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,14 +12,24 @@ license = "MIT"
 authors = [{ name = "Zheyuan Hu" }]
 keywords = ["ai-agents", "benchmark", "prompt-injection", "security"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Security",
 ]
 dependencies = []
+
+[project.urls]
+Changelog = "https://github.com/zheyuanhu2-sketch/agentsecbench/blob/main/CHANGELOG.md"
+Issues = "https://github.com/zheyuanhu2-sketch/agentsecbench/issues"
+Repository = "https://github.com/zheyuanhu2-sketch/agentsecbench"
 
 [project.scripts]
 agentsecbench = "agentsecbench.cli:main"
@@ -27,7 +37,7 @@ agentsecbench = "agentsecbench.cli:main"
 [dependency-groups]
 dev = [
   "mypy>=1.15,<2",
-  "pytest>=8.3,<9",
+  "pytest>=9.0.3,<10",
   "pytest-cov>=6,<7",
   "ruff>=0.11,<1",
 ]

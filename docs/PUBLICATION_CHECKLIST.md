@@ -1,15 +1,37 @@
-# Publication checklist
+# v1.0 publication checklist
 
-Keep the GitHub repository private until every required item is complete.
+Keep the GitHub repository private until every required item is complete. A checked item must have
+current evidence; an old successful run does not cover later commits.
+
+## Repository contract
 
 - [x] Complete and review the repository-grounded threat model.
-- [ ] Confirm all benchmark data is synthetic and contains no credentials or personal data.
-- [ ] Pass formatting, lint, strict typing, tests, and the coverage threshold.
-- [x] Pin dependencies in `uv.lock` and enable dependency update review.
-- [ ] Run a secret scan over the complete Git history.
-- [ ] Verify README claims against checked-in commands and artifacts.
-- [x] Add a stable result-artifact schema and changelog.
-- [x] Add a stable external-scenario schema before accepting external scenarios.
-- [ ] Document responsible disclosure and maintainer contact channels.
-- [ ] Create a signed or checksummed v0.2 release candidate.
-- [ ] Review the repository visibility setting immediately before publication.
+- [x] Freeze and fingerprint the built-in scenario catalog.
+- [x] Publish strict result-artifact, experiment-summary, and external-scenario contracts.
+- [x] Confirm checked-in benchmark fixtures are synthetic; retain the review in `DATA_REVIEW.md`.
+- [x] Document architecture, assumptions, model boundaries, statistics, and limitations.
+- [x] Document the responsible-disclosure policy and maintainer route in `SECURITY.md`.
+
+## Automated quality and security
+
+- [ ] Observe green CI for the candidate commit on Python 3.11 through 3.14.
+- [x] Pin Python dependencies in `uv.lock` and GitHub Actions by full commit SHA.
+- [x] Enable monthly dependency update review with Dependabot.
+- [x] Audit the locked dependency graph with no known advisories.
+- [x] Scan the complete Git history with a checksum-pinned Gitleaks release.
+- [x] Verify README commands, local links, versions, Changelog, and synthetic fixture conventions.
+- [x] Build the wheel and source distribution twice and require byte-identical output.
+- [x] Validate distribution metadata/archive safety and execute a clean wheel install.
+
+## Release and public GitHub settings
+
+- [x] Add an exact-tag release workflow that reruns all gates and publishes `SHA256SUMS`.
+- [ ] Rotate the development provider key referenced in the private model-pilot notes.
+- [ ] Review and approve the exact v1.0.0 version, Changelog, and release commit.
+- [ ] Make the repository public after all other pre-publication items pass.
+- [ ] Enable and test GitHub private vulnerability reporting immediately after publication.
+- [ ] Enable a `main` ruleset requiring all CI jobs and blocking force push/deletion.
+- [ ] Push the exact `v1.0.0` tag and observe a green release workflow.
+- [ ] Independently download and verify the wheel, source archive, and `SHA256SUMS`.
+- [ ] Verify repository visibility, default branch, license, topics, security settings, and release
+  presentation from a signed-out browser session.

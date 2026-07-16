@@ -25,7 +25,9 @@ This is the confirmed operating-boundary record for private development.
 - Bailian batches are capped at five trials and use one shared request/token budget. Each loop
   receives a random UUID trial identity and persists only redacted result metadata.
 - A compromised Python interpreter, dependency, CI runner, or developer workstation is out of
-  scope for private development, but supply-chain controls remain part of the publication gate.
+  scope for private development. Locked/audited dependencies, pinned scanners and actions,
+  read-only ordinary CI, reproducible packages, strict release inspection, and checksums reduce
+  but cannot eliminate that supply-chain risk.
 
 ## Changes that require a new threat-model review
 

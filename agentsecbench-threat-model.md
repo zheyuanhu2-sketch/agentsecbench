@@ -2,17 +2,19 @@
 
 ## Executive summary
 
-AgentSecBench v0.7 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v0.8 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.7 includes one tightly
+ground-truth isolation with separate immutable and opaque policy views. v0.8 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
 provenance, a user-environment credential, explicit redacted result-artifact writes, and bounded
 external synthetic-catalog reads. It also permits a separate literal-loopback-only local model
 path; real tools, public services, LAN model endpoints, multi-tenancy, and untrusted-code execution
-remain explicitly out of scope.
+remain explicitly out of scope. Its release boundary adds locked dependency auditing,
+checksum-pinned workflow and secret scanners, complete-history scanning, byte-reproducible package
+builds, strict distribution inspection, and an exact-tag GitHub release workflow.
 
 ## Scope and assumptions
 
@@ -22,6 +24,7 @@ In scope:
   domain models, and in-memory tools.
 - Security-relevant tests under `tests/`.
 - Dependency and CI configuration in `pyproject.toml`, `uv.lock`, and `.github/`.
+- Source and distribution publication checks under `scripts/`.
 - Runtime and publication contracts in `README.md`, `SECURITY.md`, and `docs/`.
 
 Confirmed assumptions:
@@ -30,7 +33,7 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.7 may call Alibaba Cloud Model Studio or a literal-loopback local server through dedicated
+- v0.8 may call Alibaba Cloud Model Studio or a literal-loopback local server through dedicated
   Chat Completions adapters, but model
   output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
@@ -46,8 +49,8 @@ Open questions that would materially change risk ranking:
 
 ### Primary components
 
-- **CLI:** `src/agentsecbench/cli.py:main` selects a policy, lists scenarios, or prints aggregate
-  metrics. It has no credential or file arguments in v0.1.
+- **CLI:** `src/agentsecbench/cli.py:main` selects deterministic/model workflows, loads explicitly
+  selected local artifacts or catalogs, and prints bounded metrics or validation results.
 - **Catalog:** `src/agentsecbench/catalog.py:build_catalog` constructs 30 code-reviewed synthetic
   scenarios, validates their invariants, and exposes their evaluator-only labels.
 - **Catalog validator:** `src/agentsecbench/validation.py:validate_catalog` rejects duplicate IDs,
@@ -62,7 +65,11 @@ Open questions that would materially change risk ranking:
 - **Evaluator:** `src/agentsecbench/evaluator.py:evaluate_scenario` mediates every proposed action,
   executes allowed actions, and computes results from evaluator-only labels.
 - **CI/build:** `.github/workflows/ci.yml` uses read-only repository permissions, commit-pinned
-  actions, locked dependencies, static analysis, tests, and a deterministic comparison run.
+  actions, locked dependencies, Python 3.11-3.14 tests, dependency and complete-history secret
+  scans, static analysis, workflow validation, repeated builds, and an isolated wheel run.
+- **Release boundary:** `scripts/release_gate.py` validates source and package contracts;
+  `.github/workflows/release.yml` grants `contents: write` only to an exact-version tag workflow
+  that reruns all gates and publishes the wheel, source archive, and canonical SHA-256 checksums.
 - **Model adapter foundation:** `src/agentsecbench/adapters/` defines immutable request/response
   contracts, a deterministic fake adapter, fail-closed token/request budgets, explicit-secret
   redaction, shared strict OpenAI-compatible parsing, a secure JSON transport, the Alibaba Cloud
@@ -100,8 +107,15 @@ Open questions that would materially change risk ranking:
   `src/agentsecbench/tools.py:_mail_read`, `_file_read`, and
   `src/agentsecbench/policy.py:SecurePolicy.decide`.
 - GitHub source -> CI runner: repository code and locked dependency metadata cross into a GitHub-
-  hosted runner. Actions are pinned to commits, `GITHUB_TOKEN` has `contents: read`, and no
-  artifacts or packages are published. Evidence: `.github/workflows/ci.yml` and `uv.lock`.
+  hosted runner. Actions are pinned to commits, ordinary CI has only `contents: read`, dependency
+  and scanner downloads are locked or checksum-pinned, and no CI job publishes packages.
+  Evidence: `.github/workflows/ci.yml`, `scripts/release_gate.py`, and `uv.lock`.
+- Exact version tag -> Release runner -> GitHub release: source and upstream build tools cross into
+  a GitHub-hosted runner with `contents: write`. The workflow revalidates the tag/version, source,
+  tests, dependency graph, complete history, package internals, reproducibility, and clean install
+  before `gh release create` publishes three checksummed assets. A compromised upstream runner,
+  build backend, or write token remains able to publish malicious assets. Evidence:
+  `.github/workflows/release.yml` and `scripts/release_gate.py`.
 - Bailian adapter -> Alibaba Cloud Model Studio: bounded synthetic prompts, bearer credential,
   and model responses cross HTTPS only after explicit `--approve-network`. The endpoint must use an
   official Alibaba Cloud hostname, exact Workspace-compatible path, port 443, no redirects or
@@ -183,6 +197,8 @@ flowchart LR
 | Synthetic mail and file tools | Policy-approved direct call | Evaluator -> side-effect sandbox | Four exact handlers; no dynamic import or code execution | `src/agentsecbench/tools.py:InMemoryEnvironment.execute` |
 | Path and recipient capabilities | Action arguments | Policy -> tool scope | Deny-by-default checks, but policy configuration remains developer-authored | `src/agentsecbench/policy.py:SecurePolicy.decide` |
 | Dependency installation | `uv sync --locked` | Package registry -> runner | Lockfile present; package provenance still depends on upstream registries | `uv.lock`; `.github/workflows/ci.yml` |
+| Release source/package validation | Source and two independent builds | Repository/build backend -> release gate | Exact versions, links, CLI options, synthetic fixture domains, archive paths/types/size, metadata, contents, and hashes | `scripts/release_gate.py`; `tests/test_release_gate.py` |
+| GitHub release publication | Exact `v<major>.<minor>.<patch>` tag | Tag -> write-enabled release runner -> GitHub assets | All gates rerun; byte-identical builds and `SHA256SUMS`; no PyPI publication | `.github/workflows/release.yml`; `docs/RELEASE_PROCESS.md` |
 | Bailian live commands | Explicit local `--approve-network` | Local process -> Model Studio | Bounded synthetic prompts; metadata-only output; exact official host/path | `adapters/bailian.py`; `cli.py:bailian-smoke`; `cli.py:bailian-evaluate` |
 | Local model commands | Explicit `--approve-local-network` | Local process -> literal loopback service | IPv4/IPv6 loopback only, explicit port 1024-65535, exact `/v1`, no DNS/proxy/redirect/retry | `adapters/loopback.py`; `adapters/local.py`; `cli.py:local-smoke`; `cli.py:local-evaluate` |
 | Bailian batch | Explicit `--approve-network`, two to five trials | Local process -> Model Studio -> result v2 files | One shared budget, no retries, UUID trial identity, every trial retained, content-free summary | `cli.py:bailian-batch`; `artifacts.py`; `experiments.py` |
@@ -225,7 +241,7 @@ flowchart LR
 | TM-003 | Adapter or future connector author | New code has direct SDK, network, filesystem, or subprocess access | Execute a side effect without passing through evaluator and policy | Real mutation, disclosure, or code execution | Policy boundary, future credentials/data | Only `InMemoryEnvironment` exists; `SECURITY.md` forbids new effects without review | Architectural rule is not process-enforced | Keep real connectors out of adapter process; expose a single broker API that accepts only approved action IDs; deny subprocess and host mounts | Audit all outbound calls; assert every tool receipt maps to one policy decision | Low in v0.1 | High if real tools are added | medium |
 | TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, real data, or trivial attacks | Misleading metrics, privacy loss, and irreproducible results | Catalog, results | `agentsecbench.scenario.v1`; bounded duplicate-safe parser; exact fields/tools; synthetic declaration; cross-reference/path/label/policy invariants; stable fingerprint; runnable example | Synthetic classification is author-asserted; no semantic duplicate, difficulty, or held-out-set analysis | Require human data review and fingerprint diff; add semantic duplicate/difficulty reports and a held-out set before benchmark claims | CI catalog diff, canary/PII scan, composition report, fingerprint and metric deltas | Low for structural poisoning; medium for semantic or data-quality manipulation | High | medium |
 | TM-005 | Compromised dependency, adapter, or local malware | Process can read the user-environment Bailian key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credential, compute budget | Key is outside Git and CLI; official-host and exact-path checks; no redirects/retries/proxies; generic errors; redactor; request/token limits; explicit network approval | User-level environment is readable by same-user processes; key previously appeared in a private task conversation; provider-side spend alert not verified | Rotate the key before publication; use a dedicated low-quota workspace key; enable provider usage alerts; move to OS credential storage if automated runs expand | Secret scans, canary-redaction tests, Model Studio usage alerts, one-request smoke budget | Low in trusted local use | High | medium |
-| TM-006 | Compromised package or CI action | Upstream registry or pinned commit is compromised | Execute code during install or CI and alter tests or source | Build integrity loss; future secret theft | CI, dependencies, source | `uv.lock`; commit-pinned actions; `contents: read`; Dependabot; no publish step | Python registry artifacts are not hash-reviewed manually; local dev environment is trusted | Review lockfile diffs, enable GitHub dependency review and secret scanning where available, use isolated CI with no provider secrets | Dependabot alerts, unexpected lockfile or workflow changes, reproducible build checks | Low | High | medium |
+| TM-006 | Compromised package, scanner, CI action, or release runner | Upstream registry, pinned artifact/commit, or GitHub runner is compromised | Execute during install/build and alter tests or published assets | Release integrity loss; future secret theft | CI, dependencies, source, GitHub release | `uv.lock`; commit-pinned actions; checksum-pinned Gitleaks/Actionlint; OSV audit; read-only ordinary CI; exact-tag release workflow; strict package inspection; repeated byte-identical builds; `SHA256SUMS`; Dependabot | Reproducible builds on the same runner do not defeat a compromised compiler/backend; private GitHub Free cannot use attestations or branch rules; release job has `contents: write` | Review lock/workflow diffs; enable required rules and private vulnerability reporting after publication; add GitHub artifact attestations when public; independently verify release checksums | Dependabot/OSV alerts, full-history scans, unexpected workflow or checksum changes, independent rebuild comparison | Low | High | medium |
 | TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; two-to-five-trial batch cap; one shared ledger; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, trial, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
 | TM-009 | Logging, artifact, or reporting code | A future schema change admits content fields | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | Exact `agentsecbench.result.v1` allowlist; prompts/arguments/outputs absent; bounded canonical serializer and strict parser; artifact canary tests; output disabled by default | A contributor can intentionally change both schema and tests; user-selected output remains host state | Require threat-model and schema-version review for any content field; scan generated and committed artifacts; keep raw transcripts out of scope | Secret canaries, unknown-field tests, artifact diff review, repository/history secret scans | Low | Medium | low |
@@ -235,7 +251,7 @@ flowchart LR
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.7 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.8 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -266,6 +282,8 @@ flowchart LR
 | `tests/test_catalog.py` | Must detect label leakage, duplicates, and future schema drift | TM-001, TM-004 |
 | `tests/test_policy.py` | Protects deny-by-default behavior and oracle isolation | TM-001, TM-002, TM-008 |
 | `.github/workflows/ci.yml` | Executes third-party build tooling and enforces release gates | TM-006 |
+| `.github/workflows/release.yml` | Owns the only automated write permission and GitHub asset publication | TM-006 |
+| `scripts/release_gate.py` | Validates source claims, distribution safety/metadata, reproducibility, and checksums | TM-004, TM-006, TM-009 |
 | `uv.lock` | Freezes but also introduces the Python dependency supply chain | TM-006 |
 | `src/agentsecbench/adapters/base.py` | Owns immutable model contracts and request/token budgets | TM-002, TM-005, TM-007, TM-009 |
 | `src/agentsecbench/adapters/bailian.py` | Owns provider schema, token accounting, and official-host contract | TM-005, TM-007, TM-009 |
@@ -275,7 +293,7 @@ flowchart LR
 
 ## Quality check
 
-- [x] Covered every current entry point: CLI, catalog, policy, in-memory tools, and CI.
+- [x] Covered every current entry point: CLI, catalog, policy, in-memory tools, CI, and release.
 - [x] Represented each current and confirmed future trust boundary in at least one threat.
 - [x] Separated runtime, tests/examples, and CI/build behavior.
 - [x] Reflected the confirmed single-user, local, synthetic, non-public deployment context.

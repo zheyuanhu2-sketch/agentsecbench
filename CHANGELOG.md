@@ -2,6 +2,22 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.8.0 - 2026-07-16
+
+- Add a cross-platform source and distribution release gate covering version/changelog agreement,
+  local documentation links, documented CLI commands, synthetic fixture domains, archive safety,
+  package metadata, console entry points, stale artifacts, and canonical checksums.
+- Expand CI to Python 3.11 through 3.14 with separate static, test, dependency/secret-scan, and
+  reproducible-build jobs, plus checksum-pinned Actionlint workflow validation.
+- Scan complete Git history with checksum-pinned Gitleaks 8.30.1 and audit the locked dependency
+  graph with `uv audit`.
+- Upgrade pytest to the fixed 9.x line after the dependency audit identified vulnerable temporary
+  directory handling in 8.4.2.
+- Add a tag-gated workflow that reruns every quality and security check, requires byte-identical
+  repeated builds, verifies a clean wheel install, and publishes SHA-256-checksummed GitHub assets.
+- Document the synthetic-data review, responsible disclosure path, release process, and remaining
+  v1.0 publication gates.
+
 ## 0.7.0 - 2026-07-16
 
 - Add a loopback-only OpenAI-compatible adapter for Ollama, LM Studio, vLLM, and equivalent local
