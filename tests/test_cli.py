@@ -185,6 +185,64 @@ def test_external_catalog_cli_rejects_invalid_schema(
     assert "Catalog validation failed" in capsys.readouterr().err
 
 
+def test_experiment_aggregate_cli_outputs_intervals_and_summary(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    first = tmp_path / "trial-1.json"
+    second = tmp_path / "trial-2.json"
+    experiment = tmp_path / "experiment.json"
+
+    assert main(("evaluate", "--policy", "secure", "--output", str(first))) == 0
+    capsys.readouterr()
+    assert main(("evaluate", "--policy", "secure", "--output", str(second))) == 0
+    capsys.readouterr()
+    second_payload = json.loads(second.read_text(encoding="utf-8"))
+    second_payload["tasks"][20]["attack_success"] = True
+    second_payload["tasks"][20]["leakage"] = True
+    second_payload["metrics"]["attack_success_rate"] = 0.1
+    second_payload["metrics"]["leakage_rate"] = 0.1
+    second.write_text(json.dumps(second_payload), encoding="utf-8")
+
+    assert (
+        main(
+            (
+                "experiment-aggregate",
+                str(first),
+                str(second),
+                "--output",
+                str(experiment),
+            )
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "Trials: 2" in output
+    assert "95% CI" in output
+    assert "Experiment SHA-256:" in output
+    assert experiment.is_file()
+
+    assert main(("experiment-aggregate", str(first), str(second), "--json")) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == "agentsecbench.experiment.v1"
+    assert payload["metrics"]["utility"]["rate"] == 1.0
+
+
+def test_experiment_aggregate_cli_rejects_non_comparable_inputs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secure = tmp_path / "secure.json"
+    unsafe = tmp_path / "unsafe.json"
+    assert main(("evaluate", "--policy", "secure", "--output", str(secure))) == 0
+    capsys.readouterr()
+    assert main(("evaluate", "--policy", "unsafe", "--output", str(unsafe))) == 0
+    capsys.readouterr()
+
+    assert main(("experiment-aggregate", str(secure), str(unsafe))) == 1
+    assert "not directly comparable" in capsys.readouterr().err
+
+
 def test_bailian_evaluate_cli_rejects_bad_task_selection(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

@@ -17,6 +17,8 @@ This is the confirmed operating-boundary record for private development.
 - External scenario files are read only from an explicit local `.json` path, are limited to 2 MiB,
   reject symbolic links and duplicate keys, have no include/reference mechanism, and must declare
   synthetic classification before catalog validation.
+- Experiment summaries are derived only from strictly validated result artifacts, reject
+  incompatible manifests/task selections and duplicate digests, and contain metadata only.
 - A compromised Python interpreter, dependency, CI runner, or developer workstation is out of
   scope for private development, but supply-chain controls remain part of the publication gate.
 
@@ -28,6 +30,8 @@ This is the confirmed operating-boundary record for private development.
 - Changing result artifacts to include prompts, arguments, tool output, or provider response text.
 - Adding remote scenario sources, includes, templating, deserialization plugins, or non-synthetic
   datasets.
+- Treating correlated task-trial observations as independent causal evidence or weakening
+  experiment comparability checks.
 - Executing untrusted code or connecting to real mail, files, databases, browsers, or shells.
 
 Changing any of these assumptions requires a threat-model update before implementation.

@@ -2,6 +2,15 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.6.0 - 2026-07-16
+
+- Add `agentsecbench.experiment.v1` summaries for repeated result-artifact trials.
+- Compute overall and per-task Wilson score intervals for utility, attack success, false blocks,
+  leakage, model completion, and protocol errors.
+- Enforce exact package/catalog/mode/policy/provider/model/turn/task comparability and reject
+  duplicate artifact digests that cannot establish independent runs.
+- Add canonical atomic experiment output, source digests, and total token accounting.
+
 ## 0.5.0 - 2026-07-16
 
 - Add the strict `agentsecbench.scenario.v1` external synthetic-catalog format.

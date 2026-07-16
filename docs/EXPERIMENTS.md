@@ -59,3 +59,12 @@ Starting in v0.5, a study may use an external `agentsecbench.scenario.v1` catalo
 record must report the loaded catalog's SHA-256 fingerprint and retain the reviewed JSON input.
 The built-in v0.1 fingerprint remains unchanged; an external fingerprint is a distinct benchmark
 contract and must not be presented as a built-in result.
+
+## Repeated trials
+
+Starting in v0.6, directly comparable result artifacts can be aggregated under
+`agentsecbench.experiment.v1`. Comparability requires identical package version, catalog
+fingerprint, mode, policy, provider/model identity, turn cap, and ordered task selection. Source
+artifact SHA-256 values are retained, and duplicate digests are rejected to prevent copied files
+from inflating sample size. Statistical interpretation and limitations are documented in
+[`STATISTICS.md`](STATISTICS.md).

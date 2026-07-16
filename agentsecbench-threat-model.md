@@ -2,12 +2,12 @@
 
 ## Executive summary
 
-AgentSecBench v0.5 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v0.6 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.5 includes one tightly
+ground-truth isolation with separate immutable and opaque policy views. v0.6 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
 provenance, a user-environment credential, explicit redacted result-artifact writes, and bounded
 external synthetic-catalog reads; real tools, public services, multi-tenancy, and untrusted-code
@@ -71,6 +71,8 @@ Open questions that would materially change risk ranking:
   schema and performs bounded duplicate-safe loading plus atomic opt-in host-file writes.
 - **External catalog boundary:** `src/agentsecbench/scenario_io.py` accepts one explicit local
   synthetic JSON file, enforces exact structure and limits, and then invokes all catalog invariants.
+- **Experiment boundary:** `src/agentsecbench/experiments.py` accepts validated result objects,
+  rejects manifest/task drift and duplicate digests, and writes content-free statistical summaries.
 
 ### Data flows and trust boundaries
 
@@ -136,6 +138,7 @@ flowchart LR
 | Action provenance and taint state | Missing or forged lineage can authorize an injected side effect | I |
 | Policy decision boundary | Every side effect must be mediated exactly once | I/A |
 | Aggregate and per-task results | Reports and future papers depend on complete, reproducible measurements | I/A |
+| Trial identity and comparability | Copied or drifted trials can create false precision or invalid defense claims | I |
 | Bailian API credential | Compromise could create cost, account, and data-exposure impact | C/I |
 | CI and dependency chain | Compromise can alter releases, tests, or future credential-bearing runs | I/C/A |
 
@@ -176,6 +179,7 @@ flowchart LR
 | Dependency installation | `uv sync --locked` | Package registry -> runner | Lockfile present; package provenance still depends on upstream registries | `uv.lock`; `.github/workflows/ci.yml` |
 | Bailian live commands | Explicit local `--approve-network` | Local process -> Model Studio | Bounded synthetic prompts; metadata-only output; exact official host/path | `adapters/bailian.py`; `cli.py:bailian-smoke`; `cli.py:bailian-evaluate` |
 | Result artifact commands | Explicit `--output` or artifact path | Process -> host file / host file -> validator | Exact 1 MiB schema, atomic writes, symlink rejection, duplicate-key rejection, no content fields | `artifacts.py`; `cli.py:artifact-verify`; `cli.py:artifact-compare` |
+| Experiment aggregation | Two to 100 result artifact paths | Validated results -> comparability gate -> summary file/stdout | Exact manifest/task equality, duplicate-digest rejection, bounded canonical output | `experiments.py`; `cli.py:experiment-aggregate` |
 
 ## Top abuse paths
 
@@ -199,6 +203,10 @@ flowchart LR
 6. **Exhaust local or cloud resources:** model or external fixture proposes very large values or
    many actions -> missing run-level limits consume memory, tokens, time, or paid quota -> benchmark
    availability and cost controls fail.
+7. **Manufacture statistical confidence:** operator copies one favorable artifact or mixes changed
+   models/catalogs -> sample size appears larger or incomparable outcomes are pooled -> intervals
+   look stronger than evidence supports -> exact comparability and duplicate-digest checks reject
+   the aggregation; correlated but distinct trials remain an interpretation risk.
 
 ## Threat model table
 
@@ -213,12 +221,13 @@ flowchart LR
 | TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
 | TM-009 | Logging, artifact, or reporting code | A future schema change admits content fields | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | Exact `agentsecbench.result.v1` allowlist; prompts/arguments/outputs absent; bounded canonical serializer and strict parser; artifact canary tests; output disabled by default | A contributor can intentionally change both schema and tests; user-selected output remains host state | Require threat-model and schema-version review for any content field; scan generated and committed artifacts; keep raw transcripts out of scope | Secret canaries, unknown-field tests, artifact diff review, repository/history secret scans | Low | Medium | low |
+| TM-010 | Experiment operator or reporting code | Multiple artifacts are presented as repeated trials | Copy favorable artifacts, mix changed manifests/tasks, or overstate correlated observations | False precision and invalid research claims | Trial identity, comparability, results | Exact package/catalog/mode/policy/model/turn/task equality; source digests; duplicate-digest rejection; Wilson intervals and interpretation limits | Distinct digests do not prove statistical independence; result v1 lacks explicit provider trial identity | Add explicit trial IDs in the batch-run schema; retain provider settings; disclose correlation/template structure; avoid causal claims | Review source digests, task-level intervals, trial manifests, and unexpected zero variance | Medium | High for published claims | medium |
 
 ## Criticality calibration
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.5 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.6 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -243,6 +252,7 @@ flowchart LR
 | `src/agentsecbench/tools.py` | Current side-effect boundary and parser/input-validation choke point | TM-003, TM-007, TM-009 |
 | `src/agentsecbench/catalog.py` | Owns benchmark composition, labels, and synthetic secrets | TM-004, TM-008 |
 | `src/agentsecbench/scenario_io.py` | Owns the external file, JSON, classification, and strict object boundary | TM-004, TM-007, TM-008, TM-009 |
+| `src/agentsecbench/experiments.py` | Owns trial comparability, source identity, statistical aggregation, and summary writes | TM-004, TM-007, TM-009 |
 | `schemas/scenario-catalog-v1.schema.json` | Documents the machine-readable external structural contract | TM-004, TM-008 |
 | `src/agentsecbench/validation.py` | Enforces fixture invariants and the reproducibility fingerprint | TM-004, TM-007, TM-008 |
 | `tests/test_catalog.py` | Must detect label leakage, duplicates, and future schema drift | TM-001, TM-004 |

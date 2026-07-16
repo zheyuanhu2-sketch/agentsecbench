@@ -27,6 +27,12 @@ from agentsecbench.artifacts import (
 )
 from agentsecbench.catalog import build_catalog
 from agentsecbench.evaluator import evaluate_catalog
+from agentsecbench.experiments import (
+    BernoulliEstimate,
+    ExperimentAggregationError,
+    aggregate_result_artifacts,
+    write_experiment_summary,
+)
 from agentsecbench.model_runner import (
     MAX_DECISION_BYTES,
     MAX_TURNS,
@@ -105,6 +111,15 @@ def _print_model_summary(summary: ModelEvaluationSummary) -> None:
     print(f"Tokens: {summary.input_tokens} input, {summary.output_tokens} output")
 
 
+def _format_estimate(name: str, estimate: BernoulliEstimate, confidence: float) -> str:
+    confidence_percent = confidence * 100
+    return (
+        f"{name}: {estimate.rate:.1%} "
+        f"({confidence_percent:g}% CI {estimate.lower:.1%}-{estimate.upper:.1%}, "
+        f"n={estimate.observations})"
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentsecbench",
@@ -178,6 +193,14 @@ def _build_parser() -> argparse.ArgumentParser:
     catalog_evaluate.add_argument(
         "--output", help="Atomically write a safe canonical JSON result artifact."
     )
+    experiment = subparsers.add_parser(
+        "experiment-aggregate",
+        help="Aggregate directly comparable result artifacts with confidence intervals.",
+    )
+    experiment.add_argument("paths", nargs="+")
+    experiment.add_argument("--confidence", type=float, default=0.95)
+    experiment.add_argument("--json", action="store_true")
+    experiment.add_argument("--output", help="Atomically write a canonical experiment summary.")
     return parser
 
 
@@ -278,6 +301,72 @@ def main(argv: Sequence[str] | None = None) -> int:
             _print_summary(summary)
             if artifact_digest is not None:
                 print(f"Artifact SHA-256: {artifact_digest}")
+        return 0
+
+    if command == "experiment-aggregate":
+        try:
+            experiment_summary = aggregate_result_artifacts(
+                tuple(load_result_artifact(path) for path in args.paths),
+                confidence=args.confidence,
+            )
+            experiment_digest = None
+            if args.output:
+                experiment_digest = write_experiment_summary(args.output, experiment_summary)
+        except (ArtifactValidationError, ExperimentAggregationError) as error:
+            print(f"Experiment aggregation failed: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(experiment_summary.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(f"Trials: {experiment_summary.trial_count}")
+            print(f"Mode: {experiment_summary.mode}")
+            print(f"Policy: {experiment_summary.policy}")
+            print(
+                _format_estimate(
+                    "Utility", experiment_summary.utility, experiment_summary.confidence
+                )
+            )
+            print(
+                _format_estimate(
+                    "Attack success",
+                    experiment_summary.attack_success,
+                    experiment_summary.confidence,
+                )
+            )
+            print(
+                _format_estimate(
+                    "False blocks",
+                    experiment_summary.false_block,
+                    experiment_summary.confidence,
+                )
+            )
+            print(
+                _format_estimate(
+                    "Leakage", experiment_summary.leakage, experiment_summary.confidence
+                )
+            )
+            if experiment_summary.completion is not None:
+                print(
+                    _format_estimate(
+                        "Completion",
+                        experiment_summary.completion,
+                        experiment_summary.confidence,
+                    )
+                )
+            if experiment_summary.protocol_error is not None:
+                print(
+                    _format_estimate(
+                        "Protocol errors",
+                        experiment_summary.protocol_error,
+                        experiment_summary.confidence,
+                    )
+                )
+            print(
+                f"Tokens: {experiment_summary.input_tokens} input, "
+                f"{experiment_summary.output_tokens} output"
+            )
+            if experiment_digest is not None:
+                print(f"Experiment SHA-256: {experiment_digest}")
         return 0
 
     if command == "bailian-smoke":

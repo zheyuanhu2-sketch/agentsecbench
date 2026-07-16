@@ -22,6 +22,10 @@ The v0.5 data layer adds a versioned external synthetic-scenario schema, bounded
 loading, cross-reference and policy validation, a formal JSON Schema, and a runnable example
 catalog. See [`docs/SCENARIO_CATALOGS.md`](docs/SCENARIO_CATALOGS.md).
 
+The v0.6 statistics layer aggregates directly comparable trial artifacts into overall and
+per-task Wilson confidence intervals, completion/protocol metrics, token totals, and a canonical
+content-free experiment summary. See [`docs/STATISTICS.md`](docs/STATISTICS.md).
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -66,11 +70,12 @@ uv run agentsecbench artifact-verify artifacts/secure.json
 uv run agentsecbench artifact-compare artifacts/unsafe.json artifacts/secure.json
 uv run agentsecbench catalog-validate examples/scenario-catalog-v1.json
 uv run agentsecbench catalog-evaluate examples/scenario-catalog-v1.json --policy secure
+uv run agentsecbench experiment-aggregate artifacts/trial-1.json artifacts/trial-2.json
 ```
 
 ## Project status
 
-This repository is in private v0.5 development. The v0.1 built-in scenario catalog remains frozen.
+This repository is in private v0.6 development. The v0.1 built-in scenario catalog remains frozen.
 External catalogs use a separate versioned contract. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See

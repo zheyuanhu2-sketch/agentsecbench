@@ -37,6 +37,8 @@ flowchart LR
   result artifacts.
 - `scenario_io.py`: strictly loads versioned external synthetic catalogs without includes, remote
   references, dynamic imports, or code execution.
+- `experiments.py`: enforces trial comparability, calculates Wilson intervals, aggregates per-task
+  stability and model protocol metadata, and writes canonical experiment summaries.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
@@ -56,6 +58,8 @@ flowchart LR
     prompts, timestamps, or machine-specific paths.
 12. External scenario files are bounded, duplicate-key-safe, synthetic-only inputs that must pass
     both exact structural parsing and all catalog invariants before evaluation.
+13. Repeated-trial aggregation rejects manifest/task drift and byte-identical source artifacts;
+    every summary retains the canonical digest of every source result.
 
 ## Extension contract
 
