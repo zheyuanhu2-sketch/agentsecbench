@@ -18,6 +18,10 @@ atomic writes, stable SHA-256 digests, and metric comparison. Artifacts never co
 tool arguments, tool outputs, or synthetic secrets. See
 [`docs/RESULT_ARTIFACTS.md`](docs/RESULT_ARTIFACTS.md).
 
+The v0.5 data layer adds a versioned external synthetic-scenario schema, bounded duplicate-safe
+loading, cross-reference and policy validation, a formal JSON Schema, and a runnable example
+catalog. See [`docs/SCENARIO_CATALOGS.md`](docs/SCENARIO_CATALOGS.md).
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -60,11 +64,14 @@ uv run agentsecbench bailian-evaluate --approve-network --policy secure
 uv run agentsecbench evaluate --policy secure --output artifacts/secure.json
 uv run agentsecbench artifact-verify artifacts/secure.json
 uv run agentsecbench artifact-compare artifacts/unsafe.json artifacts/secure.json
+uv run agentsecbench catalog-validate examples/scenario-catalog-v1.json
+uv run agentsecbench catalog-evaluate examples/scenario-catalog-v1.json --policy secure
 ```
 
 ## Project status
 
-This repository is in private v0.4 development. The v0.1 scenario catalog remains frozen. The
+This repository is in private v0.5 development. The v0.1 built-in scenario catalog remains frozen.
+External catalogs use a separate versioned contract. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component model and

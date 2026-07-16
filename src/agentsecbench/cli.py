@@ -35,6 +35,7 @@ from agentsecbench.model_runner import (
 )
 from agentsecbench.models import EvaluationSummary, Scenario
 from agentsecbench.policy import policy_from_name
+from agentsecbench.scenario_io import ScenarioSchemaError, load_scenario_catalog
 from agentsecbench.validation import catalog_fingerprint
 
 
@@ -164,6 +165,19 @@ def _build_parser() -> argparse.ArgumentParser:
     artifact_compare.add_argument("baseline")
     artifact_compare.add_argument("candidate")
     artifact_compare.add_argument("--json", action="store_true")
+    catalog_validate = subparsers.add_parser(
+        "catalog-validate", help="Strictly validate an external synthetic scenario catalog."
+    )
+    catalog_validate.add_argument("path")
+    catalog_evaluate = subparsers.add_parser(
+        "catalog-evaluate", help="Evaluate an external synthetic scenario catalog."
+    )
+    catalog_evaluate.add_argument("path")
+    catalog_evaluate.add_argument("--policy", choices=("unsafe", "secure"), default="secure")
+    catalog_evaluate.add_argument("--json", action="store_true")
+    catalog_evaluate.add_argument(
+        "--output", help="Atomically write a safe canonical JSON result artifact."
+    )
     return parser
 
 
@@ -227,6 +241,43 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Attack success delta: {comparison.attack_success_delta:+.0%}")
             print(f"False-block delta: {comparison.false_block_delta:+.0%}")
             print(f"Leakage delta: {comparison.leakage_delta:+.0%}")
+        return 0
+
+    if command == "catalog-validate":
+        try:
+            external_catalog = load_scenario_catalog(args.path)
+        except ScenarioSchemaError as error:
+            print(f"Catalog validation failed: {error}", file=sys.stderr)
+            return 1
+        normal = sum(scenario.kind.value == "normal" for scenario in external_catalog)
+        attack = len(external_catalog) - normal
+        print(f"Scenarios: {len(external_catalog)} ({normal} normal, {attack} attack)")
+        print(f"Fingerprint: {catalog_fingerprint(external_catalog)}")
+        return 0
+
+    if command == "catalog-evaluate":
+        try:
+            external_catalog = load_scenario_catalog(args.path)
+            summary = evaluate_catalog(external_catalog, policy_from_name(args.policy))
+            artifact_digest = None
+            if args.output:
+                artifact_digest = write_result_artifact(
+                    args.output,
+                    deterministic_result_artifact(
+                        summary,
+                        package_version=__version__,
+                        catalog_fingerprint=catalog_fingerprint(external_catalog),
+                    ),
+                )
+        except (ArtifactValidationError, ScenarioSchemaError) as error:
+            print(f"Catalog evaluation failed: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(_summary_dict(summary), indent=2, sort_keys=True))
+        else:
+            _print_summary(summary)
+            if artifact_digest is not None:
+                print(f"Artifact SHA-256: {artifact_digest}")
         return 0
 
     if command == "bailian-smoke":

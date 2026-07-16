@@ -14,6 +14,9 @@ This is the confirmed operating-boundary record for private development.
 - The in-memory tools are the complete runtime side-effect boundary.
 - Result files are written only when the operator supplies `--output`; they contain redacted
   metadata under an exact schema and are excluded from Git by default.
+- External scenario files are read only from an explicit local `.json` path, are limited to 2 MiB,
+  reject symbolic links and duplicate keys, have no include/reference mechanism, and must declare
+  synthetic classification before catalog validation.
 - A compromised Python interpreter, dependency, CI runner, or developer workstation is out of
   scope for private development, but supply-chain controls remain part of the publication gate.
 
@@ -23,6 +26,8 @@ This is the confirmed operating-boundary record for private development.
 - Whether additional model providers will be called and how each provider handles retention.
 - Persisting raw model transcripts or running a paid batch larger than the bounded CLI selection.
 - Changing result artifacts to include prompts, arguments, tool output, or provider response text.
+- Adding remote scenario sources, includes, templating, deserialization plugins, or non-synthetic
+  datasets.
 - Executing untrusted code or connecting to real mail, files, databases, browsers, or shells.
 
 Changing any of these assumptions requires a threat-model update before implementation.

@@ -2,15 +2,16 @@
 
 ## Executive summary
 
-AgentSecBench v0.4 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v0.5 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.4 includes one tightly
+ground-truth isolation with separate immutable and opaque policy views. v0.5 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
-provenance, a user-environment credential, and explicit redacted result-artifact writes; real
-tools, public services, multi-tenancy, and untrusted-code execution remain explicitly out of scope.
+provenance, a user-environment credential, explicit redacted result-artifact writes, and bounded
+external synthetic-catalog reads; real tools, public services, multi-tenancy, and untrusted-code
+execution remain explicitly out of scope.
 
 ## Scope and assumptions
 
@@ -28,7 +29,7 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.4 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
+- v0.5 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
   output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
   scope and require a new threat-model review before implementation.
@@ -37,8 +38,8 @@ Open questions that would materially change risk ranking:
 
 - Alibaba Cloud Model Studio retention and opt-out settings for this exact workspace, and whether
   a later local-only inference adapter will be added.
-- Whether future benchmark contributors can submit external scenario files rather than code-
-  reviewed built-in fixtures.
+- Whether future external-catalog contributions will require a held-out review set or semantic
+  duplicate/difficulty analysis beyond the current structural and invariant checks.
 
 ## System model
 
@@ -68,6 +69,8 @@ Open questions that would materially change risk ranking:
   assigns action identity and provenance, mediates the policy, and invokes only in-memory tools.
 - **Artifact boundary:** `src/agentsecbench/artifacts.py` serializes an exact content-free result
   schema and performs bounded duplicate-safe loading plus atomic opt-in host-file writes.
+- **External catalog boundary:** `src/agentsecbench/scenario_io.py` accepts one explicit local
+  synthetic JSON file, enforces exact structure and limits, and then invokes all catalog invariants.
 
 ### Data flows and trust boundaries
 
@@ -164,7 +167,8 @@ flowchart LR
 | Surface | How reached | Trust boundary | Notes | Evidence (repo path / symbol) |
 |---|---|---|---|---|
 | CLI command and policy name | Local command line | Operator -> process | `argparse` constrains known subcommands and policy values | `src/agentsecbench/cli.py:main` |
-| Built-in catalog | Imported Python function | Developer code -> validator -> evaluator | Invariants and stable fingerprint enforced; no external parser yet | `src/agentsecbench/catalog.py:build_catalog`; `validation.py` |
+| Built-in catalog | Imported Python function | Developer code -> validator -> evaluator | Invariants and frozen fingerprint remain distinct from external catalogs | `src/agentsecbench/catalog.py:build_catalog`; `validation.py` |
+| External catalog | Explicit local `.json` path | Host file -> strict parser -> validator | 2 MiB, regular non-link file, duplicate/unknown-field rejection, no includes or code hooks, synthetic classification | `scenario_io.py`; `schemas/scenario-catalog-v1.schema.json` |
 | Policy implementation | Direct Python call | Evaluator -> policy | Receives immutable views without evaluator labels | `src/agentsecbench/policy.py:Policy`; `models.py:PolicyAction` |
 | Action provenance | Runtime-owned `derived_from` identifiers | Model runner -> opaque policy session | Model output cannot self-attest provenance; all prior executed outputs are bound conservatively | `model_runner.py:run_model_scenario`; `boundary.py:PolicySession` |
 | Synthetic mail and file tools | Policy-approved direct call | Evaluator -> side-effect sandbox | Four exact handlers; no dynamic import or code execution | `src/agentsecbench/tools.py:InMemoryEnvironment.execute` |
@@ -203,7 +207,7 @@ flowchart LR
 | TM-001 | Malicious policy author | Policy code runs in-process | Read or mutate evaluator ground truth to return perfect decisions | Invalid benchmark and research claims | Ground truth, results | Separate immutable views in `models.py:PolicyAction`, `ActionProposal.policy_view`, and `Scenario.policy_context`; regression tests | In-process policy code can still import project internals deliberately | Before third-party policies, run them out-of-process with a serialized allowlisted contract and no catalog module access | Canary scenarios; compare policy imports and impossible perfect-score patterns | Low under trusted development | High | medium |
 | TM-002 | Model adapter or future runtime change | Runtime provenance binding is weakened | Omit a tainted dependency and authorize a side effect | Prompt injection bypass and understated attack rate | Provenance, policy boundary, results | `model_runner.py` rejects provenance fields and binds all prior executed outputs; `boundary.py` maps opaque lineage; malicious fake-model regression test | Binding is conservative at action level rather than typed argument-level data flow | Preserve the conservative rule until typed references and equivalent taint coverage are proven | Count side effects with empty provenance after reads; forced malicious-model regression | Low | High | medium |
 | TM-003 | Adapter or future connector author | New code has direct SDK, network, filesystem, or subprocess access | Execute a side effect without passing through evaluator and policy | Real mutation, disclosure, or code execution | Policy boundary, future credentials/data | Only `InMemoryEnvironment` exists; `SECURITY.md` forbids new effects without review | Architectural rule is not process-enforced | Keep real connectors out of adapter process; expose a single broker API that accepts only approved action IDs; deny subprocess and host mounts | Audit all outbound calls; assert every tool receipt maps to one policy decision | Low in v0.1 | High if real tools are added | medium |
-| TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, or trivial attacks | Misleading metrics and irreproducible results | Catalog, results | `validation.py` enforces structural invariants and a stable SHA-256 fingerprint; `tests/test_catalog.py` freezes the digest | No semantic difficulty checks, versioned external schema, or held-out evaluation set | Add a versioned JSON schema before external fixtures, semantic duplicate analysis, benchmark change reports, and a held-out set | CI diff report for task composition, fingerprint, and metric deltas | Low for structural poisoning; medium for semantic manipulation | High | medium |
+| TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, real data, or trivial attacks | Misleading metrics, privacy loss, and irreproducible results | Catalog, results | `agentsecbench.scenario.v1`; bounded duplicate-safe parser; exact fields/tools; synthetic declaration; cross-reference/path/label/policy invariants; stable fingerprint; runnable example | Synthetic classification is author-asserted; no semantic duplicate, difficulty, or held-out-set analysis | Require human data review and fingerprint diff; add semantic duplicate/difficulty reports and a held-out set before benchmark claims | CI catalog diff, canary/PII scan, composition report, fingerprint and metric deltas | Low for structural poisoning; medium for semantic or data-quality manipulation | High | medium |
 | TM-005 | Compromised dependency, adapter, or local malware | Process can read the user-environment Bailian key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credential, compute budget | Key is outside Git and CLI; official-host and exact-path checks; no redirects/retries/proxies; generic errors; redactor; request/token limits; explicit network approval | User-level environment is readable by same-user processes; key previously appeared in a private task conversation; provider-side spend alert not verified | Rotate the key before publication; use a dedicated low-quota workspace key; enable provider usage alerts; move to OS credential storage if automated runs expand | Secret scans, canary-redaction tests, Model Studio usage alerts, one-request smoke budget | Low in trusted local use | High | medium |
 | TM-006 | Compromised package or CI action | Upstream registry or pinned commit is compromised | Execute code during install or CI and alter tests or source | Build integrity loss; future secret theft | CI, dependencies, source | `uv.lock`; commit-pinned actions; `contents: read`; Dependabot; no publish step | Python registry artifacts are not hash-reviewed manually; local dev environment is trusted | Review lockfile diffs, enable GitHub dependency review and secret scanning where available, use isolated CI with no provider secrets | Dependabot alerts, unexpected lockfile or workflow changes, reproducible build checks | Low | High | medium |
 | TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, and estimated-cost metrics | Low | Medium | low |
@@ -214,7 +218,7 @@ flowchart LR
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.4 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.5 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -238,6 +242,8 @@ flowchart LR
 | `src/agentsecbench/policy.py` | Implements capabilities, approval, taint, and sink checks | TM-002, TM-008 |
 | `src/agentsecbench/tools.py` | Current side-effect boundary and parser/input-validation choke point | TM-003, TM-007, TM-009 |
 | `src/agentsecbench/catalog.py` | Owns benchmark composition, labels, and synthetic secrets | TM-004, TM-008 |
+| `src/agentsecbench/scenario_io.py` | Owns the external file, JSON, classification, and strict object boundary | TM-004, TM-007, TM-008, TM-009 |
+| `schemas/scenario-catalog-v1.schema.json` | Documents the machine-readable external structural contract | TM-004, TM-008 |
 | `src/agentsecbench/validation.py` | Enforces fixture invariants and the reproducibility fingerprint | TM-004, TM-007, TM-008 |
 | `tests/test_catalog.py` | Must detect label leakage, duplicates, and future schema drift | TM-001, TM-004 |
 | `tests/test_policy.py` | Protects deny-by-default behavior and oracle isolation | TM-001, TM-002, TM-008 |

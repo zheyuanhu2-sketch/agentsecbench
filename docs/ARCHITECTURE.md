@@ -35,6 +35,8 @@ flowchart LR
   model-run metadata.
 - `artifacts.py`: builds, atomically writes, strictly loads, fingerprints, and compares redacted
   result artifacts.
+- `scenario_io.py`: strictly loads versioned external synthetic catalogs without includes, remote
+  references, dynamic imports, or code execution.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
@@ -52,6 +54,8 @@ flowchart LR
 10. Policy-visible identifiers are opaque and stable only within one scenario run.
 11. Result artifacts use an exact schema and cannot contain tool arguments, output content,
     prompts, timestamps, or machine-specific paths.
+12. External scenario files are bounded, duplicate-key-safe, synthetic-only inputs that must pass
+    both exact structural parsing and all catalog invariants before evaluation.
 
 ## Extension contract
 

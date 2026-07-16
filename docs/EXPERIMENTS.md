@@ -52,3 +52,10 @@ Starting in v0.4, deterministic and model runs may explicitly write a canonical
 mode, policy, provider/model identity, and the turn cap. Per-task records contain only evaluator
 IDs, tool names, statuses, generic policy reasons, Boolean outcomes, and bounded runtime metadata.
 See [`RESULT_ARTIFACTS.md`](RESULT_ARTIFACTS.md).
+
+## External catalog identity
+
+Starting in v0.5, a study may use an external `agentsecbench.scenario.v1` catalog. The experiment
+record must report the loaded catalog's SHA-256 fingerprint and retain the reviewed JSON input.
+The built-in v0.1 fingerprint remains unchanged; an external fingerprint is a distinct benchmark
+contract and must not be presented as a built-in result.

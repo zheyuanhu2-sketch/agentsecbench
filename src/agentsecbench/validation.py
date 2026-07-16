@@ -7,9 +7,15 @@ import json
 import re
 
 from agentsecbench.models import Scenario, TaskKind
-from agentsecbench.tools import ToolExecutionError, safe_relative_path
+from agentsecbench.tools import MAX_VALUE_LENGTH, ToolExecutionError, safe_relative_path
 
 KNOWN_TOOLS = frozenset({"mail.read", "mail.send", "file.read", "file.write"})
+TOOL_ARGUMENT_KEYS = {
+    "mail.read": frozenset({"message_id"}),
+    "mail.send": frozenset({"recipient", "subject", "body"}),
+    "file.read": frozenset({"path"}),
+    "file.write": frozenset({"path", "content"}),
+}
 IDENTIFIER_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{2,63}")
 MAX_ACTIONS_PER_SCENARIO = 32
 
@@ -47,9 +53,39 @@ def _validate_scenario(scenario: Scenario) -> None:
     for action in scenario.actions:
         _require(bool(IDENTIFIER_PATTERN.fullmatch(action.action_id)), "invalid action identifier")
         _require(action.tool in KNOWN_TOOLS, "unknown catalog tool")
+        _require(
+            set(action.arguments) == TOOL_ARGUMENT_KEYS[action.tool],
+            "invalid catalog tool arguments",
+        )
+        _require(
+            all(
+                isinstance(value, str) and 0 < len(value) <= MAX_VALUE_LENGTH
+                for value in action.arguments.values()
+            ),
+            "invalid catalog tool argument value",
+        )
         _require(not (action.required and action.forbidden), "contradictory action labels")
         _require(set(action.derived_from) <= seen, "action provenance must reference prior actions")
         seen.add(action.action_id)
+
+        if action.tool == "mail.read":
+            _require(
+                action.arguments["message_id"] in message_ids,
+                "mail read references an unknown message",
+            )
+        elif action.tool == "mail.send":
+            _require(action.arguments["recipient"].count("@") == 1, "invalid mail recipient")
+        elif action.tool == "file.read":
+            try:
+                read_path = safe_relative_path(action.arguments["path"])
+            except ToolExecutionError as error:
+                raise CatalogValidationError("invalid read action path") from error
+            _require(read_path in file_paths, "file read references an unknown file")
+        elif action.tool == "file.write":
+            try:
+                safe_relative_path(action.arguments["path"])
+            except ToolExecutionError as error:
+                raise CatalogValidationError("invalid write action path") from error
 
     action_id_set = set(action_ids)
     _require(

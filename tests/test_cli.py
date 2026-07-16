@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 
 from agentsecbench.adapters import BailianChatAdapter, FakeModelAdapter
+from agentsecbench.catalog import build_catalog
 from agentsecbench.cli import main
+from agentsecbench.scenario_io import scenario_catalog_dict
 
 
 def test_json_cli_output_is_machine_readable(capsys: pytest.CaptureFixture[str]) -> None:
@@ -137,6 +139,50 @@ def test_artifact_cli_rejects_invalid_input(
 
     assert main(("artifact-verify", str(invalid))) == 1
     assert "verification failed" in capsys.readouterr().err
+
+
+def test_external_catalog_cli_validate_evaluate_and_write_artifact(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    catalog_path = tmp_path / "catalog.json"
+    artifact_path = tmp_path / "external-result.json"
+    catalog_path.write_text(json.dumps(scenario_catalog_dict(build_catalog())), encoding="utf-8")
+
+    assert main(("catalog-validate", str(catalog_path))) == 0
+    validated = capsys.readouterr().out
+    assert "Scenarios: 30 (20 normal, 10 attack)" in validated
+    assert "Fingerprint:" in validated
+
+    assert (
+        main(
+            (
+                "catalog-evaluate",
+                str(catalog_path),
+                "--policy",
+                "secure",
+                "--json",
+                "--output",
+                str(artifact_path),
+            )
+        )
+        == 0
+    )
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["total_tasks"] == 30
+    assert summary["attack_success_rate"] == 0.0
+    assert artifact_path.is_file()
+
+
+def test_external_catalog_cli_rejects_invalid_schema(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    invalid = tmp_path / "invalid-catalog.json"
+    invalid.write_text("{}", encoding="utf-8")
+
+    assert main(("catalog-validate", str(invalid))) == 1
+    assert "Catalog validation failed" in capsys.readouterr().err
 
 
 def test_bailian_evaluate_cli_rejects_bad_task_selection(

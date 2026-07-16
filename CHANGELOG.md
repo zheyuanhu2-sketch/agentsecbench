@@ -2,6 +2,16 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.5.0 - 2026-07-16
+
+- Add the strict `agentsecbench.scenario.v1` external synthetic-catalog format.
+- Reject duplicate keys, unknown fields/tools, oversized or linked files, invalid paths,
+  malformed tool arguments, broken cross-references, duplicate provenance/approvals, label
+  contradictions, and non-synthetic sensitive canaries.
+- Add `catalog-validate` and `catalog-evaluate`, a Draft 2020-12 JSON Schema, and a runnable
+  normal/attack example catalog.
+- Strengthen built-in catalog validation with exact tool argument and resource-reference checks.
+
 ## 0.4.0 - 2026-07-16
 
 - Add canonical `agentsecbench.result.v1` artifacts for deterministic and model evaluations.
