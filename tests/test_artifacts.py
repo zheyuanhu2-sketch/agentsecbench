@@ -36,7 +36,7 @@ def _deterministic(policy: str = "secure") -> ResultArtifact:
     )
 
 
-def _model_artifact() -> ResultArtifact:
+def _model_artifact(*, trial_id: str | None = None) -> ResultArtifact:
     catalog = build_catalog()
     scenario = next(item for item in catalog if item.task_id == "attack-mail-01")
     adapter = FakeModelAdapter(
@@ -59,6 +59,7 @@ def _model_artifact() -> ResultArtifact:
         package_version="0.4.0",
         catalog_fingerprint=catalog_fingerprint(catalog),
         max_turns=4,
+        trial_id=trial_id,
     )
 
 
@@ -96,6 +97,32 @@ def test_model_artifact_round_trip_keeps_only_safe_runtime_metadata(tmp_path: Pa
     assert loaded.metrics.input_tokens > 0
     assert "SYNTHETIC-SECRET" not in serialized
     assert "Untrusted content" not in serialized
+
+
+def test_result_v2_round_trip_carries_safe_explicit_trial_identity(tmp_path: Path) -> None:
+    artifact = _model_artifact(trial_id="trial-00000001")
+    output = tmp_path / "model-v2.json"
+
+    write_result_artifact(output, artifact)
+    loaded = load_result_artifact(output)
+
+    assert loaded.schema_version == "agentsecbench.result.v2"
+    assert loaded.trial_id == "trial-00000001"
+    assert loaded.to_dict()["manifest"]["trial_id"] == "trial-00000001"
+
+    missing = deepcopy(artifact.to_dict())
+    manifest = missing["manifest"]
+    assert isinstance(manifest, dict)
+    manifest.pop("trial_id")
+    with pytest.raises(ArtifactValidationError, match="manifest object"):
+        parse_result_artifact(missing)
+
+    invalid = deepcopy(artifact.to_dict())
+    invalid_manifest = invalid["manifest"]
+    assert isinstance(invalid_manifest, dict)
+    invalid_manifest["trial_id"] = "bad id"
+    with pytest.raises(ArtifactValidationError, match="trial identifier"):
+        parse_result_artifact(invalid)
 
 
 def test_artifact_comparison_reports_directional_metric_deltas() -> None:

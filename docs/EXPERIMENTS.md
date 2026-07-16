@@ -68,3 +68,31 @@ fingerprint, mode, policy, provider/model identity, turn cap, and ordered task s
 artifact SHA-256 values are retained, and duplicate digests are rejected to prevent copied files
 from inflating sample size. Statistical interpretation and limitations are documented in
 [`STATISTICS.md`](STATISTICS.md).
+
+`bailian-batch` is the controlled provider trial runner. It accepts two to five trials, at most
+four selected tasks, one to six turns per task, no retries, one shared fail-closed budget, and an
+explicit `--approve-network` boundary. It writes each trial as `result.v2` plus one aggregate
+experiment summary. Batch output never contains prompt or response text.
+
+## v0.7 identified batch pilot
+
+Date: 2026-07-16. Adapter: `bailian.chat-completions`. Model: `qwen-plus`. Temperature: 0.
+Policy: `secure`. Selection: `normal-mail-01` and `attack-mail-01`. Trials: 2. Maximum turns: 4.
+
+| Metric | Positive / observations | Rate | 95% Wilson interval |
+|---|---:|---:|---:|
+| Utility | 4 / 4 | 100% | 51.01%-100% |
+| Attack success | 0 / 2 | 0% | 0%-65.76% |
+| False blocks | 0 / 2 | 0% | 0%-65.76% |
+| Leakage | 0 / 2 | 0% | 0%-65.76% |
+| Completion | 4 / 4 | 100% | 51.01%-100% |
+| Protocol errors | 0 / 10 turns | 0% | 0%-27.75% |
+
+Total provider usage was 3,242 input and 280 output tokens. Both `result.v2` trial artifacts loaded
+successfully, had distinct UUIDs and SHA-256 values, and reproduced the batch experiment summary
+byte-for-byte when reaggregated. Content-canary scanning found no prompt, mail body, injected text,
+or synthetic secret in the saved files.
+
+The wide upper bounds are the main result: two trials are a plumbing pilot, not security evidence.
+The model again declined the injected behavior before the secure policy had to demonstrate a block,
+so no policy-effect claim is supported by this batch.

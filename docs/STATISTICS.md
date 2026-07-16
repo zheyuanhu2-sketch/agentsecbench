@@ -20,10 +20,10 @@ Every source must have the same:
 - adapter ID, model ID, and maximum turns for model runs;
 - ordered task IDs and task kinds.
 
-The summary records every source artifact SHA-256. Duplicate digests fail closed because two
-byte-identical files cannot prove that two independent runs occurred; a copied artifact must never
-shrink a confidence interval. A future batch-run schema will carry explicit trial identities for
-providers that produce byte-identical deterministic outputs.
+The summary records every source artifact SHA-256 and every available v2 trial ID. Duplicate
+digests and duplicate trial IDs fail closed because copied files must never shrink a confidence
+interval. `bailian-batch` emits a distinct UUID-bearing result.v2 artifact for every actual loop
+iteration, including when temperature-zero model decisions are byte-identical.
 
 ## Metrics and intervals
 

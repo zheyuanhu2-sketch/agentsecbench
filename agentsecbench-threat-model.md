@@ -2,16 +2,17 @@
 
 ## Executive summary
 
-AgentSecBench v0.6 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v0.7 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.6 includes one tightly
+ground-truth isolation with separate immutable and opaque policy views. v0.7 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
 provenance, a user-environment credential, explicit redacted result-artifact writes, and bounded
-external synthetic-catalog reads; real tools, public services, multi-tenancy, and untrusted-code
-execution remain explicitly out of scope.
+external synthetic-catalog reads. It also permits a separate literal-loopback-only local model
+path; real tools, public services, LAN model endpoints, multi-tenancy, and untrusted-code execution
+remain explicitly out of scope.
 
 ## Scope and assumptions
 
@@ -29,15 +30,15 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.5 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
+- v0.7 may call Alibaba Cloud Model Studio or a literal-loopback local server through dedicated
+  Chat Completions adapters, but model
   output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
   scope and require a new threat-model review before implementation.
 
 Open questions that would materially change risk ranking:
 
-- Alibaba Cloud Model Studio retention and opt-out settings for this exact workspace, and whether
-  a later local-only inference adapter will be added.
+- Alibaba Cloud Model Studio retention and opt-out settings for this exact workspace.
 - Whether future external-catalog contributions will require a held-out review set or semantic
   duplicate/difficulty analysis beyond the current structural and invariant checks.
 
@@ -64,7 +65,8 @@ Open questions that would materially change risk ranking:
   actions, locked dependencies, static analysis, tests, and a deterministic comparison run.
 - **Model adapter foundation:** `src/agentsecbench/adapters/` defines immutable request/response
   contracts, a deterministic fake adapter, fail-closed token/request budgets, explicit-secret
-  redaction, a secure JSON transport, and the Alibaba Cloud Model Studio adapter.
+  redaction, shared strict OpenAI-compatible parsing, a secure JSON transport, the Alibaba Cloud
+  Model Studio adapter, and a literal-loopback local adapter.
 - **Model runner:** `src/agentsecbench/model_runner.py` validates one exact JSON decision per turn,
   assigns action identity and provenance, mediates the policy, and invokes only in-memory tools.
 - **Artifact boundary:** `src/agentsecbench/artifacts.py` serializes an exact content-free result
@@ -106,6 +108,10 @@ Open questions that would materially change risk ranking:
   retries, bounded response size, and generic errors. Evidence:
   `src/agentsecbench/adapters/bailian.py`, `adapters/transport.py`, and
   `src/agentsecbench/cli.py:bailian-smoke` and `bailian-evaluate`.
+- Local adapter -> loopback model server: bounded synthetic prompts cross direct HTTP only to
+  literal `127.0.0.1` or `::1` on an explicit unprivileged port after
+  `--approve-local-network`. No DNS, proxy, redirect, retry, or service discovery occurs.
+  Evidence: `adapters/loopback.py`, `adapters/local.py`, and `cli.py:local-evaluate`.
 - Evaluator/model runner -> Result artifact: only manifest, metrics, Boolean outcomes, action/tool
   identifiers, statuses, generic reasons, and bounded runtime metadata cross into an operator-
   selected JSON file. Prompts, arguments, outputs, synthetic secrets, endpoints, timestamps, and
@@ -178,6 +184,8 @@ flowchart LR
 | Path and recipient capabilities | Action arguments | Policy -> tool scope | Deny-by-default checks, but policy configuration remains developer-authored | `src/agentsecbench/policy.py:SecurePolicy.decide` |
 | Dependency installation | `uv sync --locked` | Package registry -> runner | Lockfile present; package provenance still depends on upstream registries | `uv.lock`; `.github/workflows/ci.yml` |
 | Bailian live commands | Explicit local `--approve-network` | Local process -> Model Studio | Bounded synthetic prompts; metadata-only output; exact official host/path | `adapters/bailian.py`; `cli.py:bailian-smoke`; `cli.py:bailian-evaluate` |
+| Local model commands | Explicit `--approve-local-network` | Local process -> literal loopback service | IPv4/IPv6 loopback only, explicit port 1024-65535, exact `/v1`, no DNS/proxy/redirect/retry | `adapters/loopback.py`; `adapters/local.py`; `cli.py:local-smoke`; `cli.py:local-evaluate` |
+| Bailian batch | Explicit `--approve-network`, two to five trials | Local process -> Model Studio -> result v2 files | One shared budget, no retries, UUID trial identity, every trial retained, content-free summary | `cli.py:bailian-batch`; `artifacts.py`; `experiments.py` |
 | Result artifact commands | Explicit `--output` or artifact path | Process -> host file / host file -> validator | Exact 1 MiB schema, atomic writes, symlink rejection, duplicate-key rejection, no content fields | `artifacts.py`; `cli.py:artifact-verify`; `cli.py:artifact-compare` |
 | Experiment aggregation | Two to 100 result artifact paths | Validated results -> comparability gate -> summary file/stdout | Exact manifest/task equality, duplicate-digest rejection, bounded canonical output | `experiments.py`; `cli.py:experiment-aggregate` |
 
@@ -218,16 +226,16 @@ flowchart LR
 | TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, real data, or trivial attacks | Misleading metrics, privacy loss, and irreproducible results | Catalog, results | `agentsecbench.scenario.v1`; bounded duplicate-safe parser; exact fields/tools; synthetic declaration; cross-reference/path/label/policy invariants; stable fingerprint; runnable example | Synthetic classification is author-asserted; no semantic duplicate, difficulty, or held-out-set analysis | Require human data review and fingerprint diff; add semantic duplicate/difficulty reports and a held-out set before benchmark claims | CI catalog diff, canary/PII scan, composition report, fingerprint and metric deltas | Low for structural poisoning; medium for semantic or data-quality manipulation | High | medium |
 | TM-005 | Compromised dependency, adapter, or local malware | Process can read the user-environment Bailian key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credential, compute budget | Key is outside Git and CLI; official-host and exact-path checks; no redirects/retries/proxies; generic errors; redactor; request/token limits; explicit network approval | User-level environment is readable by same-user processes; key previously appeared in a private task conversation; provider-side spend alert not verified | Rotate the key before publication; use a dedicated low-quota workspace key; enable provider usage alerts; move to OS credential storage if automated runs expand | Secret scans, canary-redaction tests, Model Studio usage alerts, one-request smoke budget | Low in trusted local use | High | medium |
 | TM-006 | Compromised package or CI action | Upstream registry or pinned commit is compromised | Execute code during install or CI and alter tests or source | Build integrity loss; future secret theft | CI, dependencies, source | `uv.lock`; commit-pinned actions; `contents: read`; Dependabot; no publish step | Python registry artifacts are not hash-reviewed manually; local dev environment is trusted | Review lockfile diffs, enable GitHub dependency review and secret scanning where available, use isolated CI with no provider secrets | Dependabot alerts, unexpected lockfile or workflow changes, reproducible build checks | Low | High | medium |
-| TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, and estimated-cost metrics | Low | Medium | low |
+| TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; two-to-five-trial batch cap; one shared ledger; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, trial, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
 | TM-009 | Logging, artifact, or reporting code | A future schema change admits content fields | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | Exact `agentsecbench.result.v1` allowlist; prompts/arguments/outputs absent; bounded canonical serializer and strict parser; artifact canary tests; output disabled by default | A contributor can intentionally change both schema and tests; user-selected output remains host state | Require threat-model and schema-version review for any content field; scan generated and committed artifacts; keep raw transcripts out of scope | Secret canaries, unknown-field tests, artifact diff review, repository/history secret scans | Low | Medium | low |
-| TM-010 | Experiment operator or reporting code | Multiple artifacts are presented as repeated trials | Copy favorable artifacts, mix changed manifests/tasks, or overstate correlated observations | False precision and invalid research claims | Trial identity, comparability, results | Exact package/catalog/mode/policy/model/turn/task equality; source digests; duplicate-digest rejection; Wilson intervals and interpretation limits | Distinct digests do not prove statistical independence; result v1 lacks explicit provider trial identity | Add explicit trial IDs in the batch-run schema; retain provider settings; disclose correlation/template structure; avoid causal claims | Review source digests, task-level intervals, trial manifests, and unexpected zero variance | Medium | High for published claims | medium |
+| TM-010 | Experiment operator or reporting code | Multiple artifacts are presented as repeated trials | Copy favorable artifacts, mix changed manifests/tasks, or overstate correlated observations | False precision and invalid research claims | Trial identity, comparability, results | Exact package/catalog/mode/policy/model/turn/task equality; result v2 UUIDs; source digests/trial IDs; duplicate rejection; Wilson intervals; bounded batch runner and interpretation limits | UUIDs and distinct digests do not cryptographically prove provider independence; tasks remain correlated/template-related | Retain provider settings and billing/request evidence where appropriate; disclose correlation/template structure; avoid causal claims | Review source IDs/digests, task-level intervals, manifests, provider usage, and unexpected zero variance | Medium | High for published claims | medium |
 
 ## Criticality calibration
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.6 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.7 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -262,6 +270,8 @@ flowchart LR
 | `src/agentsecbench/adapters/base.py` | Owns immutable model contracts and request/token budgets | TM-002, TM-005, TM-007, TM-009 |
 | `src/agentsecbench/adapters/bailian.py` | Owns provider schema, token accounting, and official-host contract | TM-005, TM-007, TM-009 |
 | `src/agentsecbench/adapters/transport.py` | Owns TLS, egress allowlist, credential header, timeout, and response boundary | TM-005, TM-006, TM-007, TM-009 |
+| `src/agentsecbench/adapters/loopback.py` | Owns the no-DNS literal-loopback HTTP and local response boundary | TM-003, TM-007, TM-009 |
+| `src/agentsecbench/adapters/local.py` | Owns local `/v1/chat/completions` configuration and model identity | TM-003, TM-007, TM-009 |
 
 ## Quality check
 
@@ -270,4 +280,4 @@ flowchart LR
 - [x] Separated runtime, tests/examples, and CI/build behavior.
 - [x] Reflected the confirmed single-user, local, synthetic, non-public deployment context.
 - [x] Kept real tools, public hosting, multi-tenancy, and untrusted code explicitly out of scope.
-- [x] Covered the current Bailian boundary and kept expansion risks explicitly conditional.
+- [x] Covered the current Bailian and literal-loopback model boundaries.

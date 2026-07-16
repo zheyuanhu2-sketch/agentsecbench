@@ -19,6 +19,11 @@ This is the confirmed operating-boundary record for private development.
   synthetic classification before catalog validation.
 - Experiment summaries are derived only from strictly validated result artifacts, reject
   incompatible manifests/task selections and duplicate digests, and contain metadata only.
+- Local model calls use direct HTTP only to literal `127.0.0.1` or `::1` on an explicit port from
+  1024 through 65535, after `--approve-local-network`; DNS names, LAN/unspecified addresses,
+  proxies, redirects, retries, and URL credentials are rejected.
+- Bailian batches are capped at five trials and use one shared request/token budget. Each loop
+  receives a random UUID trial identity and persists only redacted result metadata.
 - A compromised Python interpreter, dependency, CI runner, or developer workstation is out of
   scope for private development, but supply-chain controls remain part of the publication gate.
 
@@ -32,6 +37,8 @@ This is the confirmed operating-boundary record for private development.
   datasets.
 - Treating correlated task-trial observations as independent causal evidence or weakening
   experiment comparability checks.
+- Expanding local inference from literal loopback to hostnames, LAN/cloud URLs, privileged ports,
+  automatic service discovery, or arbitrary OpenAI-compatible endpoints.
 - Executing untrusted code or connecting to real mail, files, databases, browsers, or shells.
 
 Changing any of these assumptions requires a threat-model update before implementation.

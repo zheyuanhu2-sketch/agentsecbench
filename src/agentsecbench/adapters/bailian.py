@@ -15,6 +15,10 @@ from agentsecbench.adapters.base import (
     ModelRequest,
     ModelResponse,
 )
+from agentsecbench.adapters.openai_compat import (
+    chat_completion_payload,
+    parse_chat_completion_response,
+)
 from agentsecbench.adapters.transport import SecureJsonTransport, SecureJsonTransportConfig
 
 BAILIAN_BASE_URL_ENV = "AGENTSECBENCH_BAILIAN_BASE_URL"
@@ -108,18 +112,11 @@ class BailianChatAdapter:
 
     def complete(self, request: ModelRequest, budget: BudgetLedger) -> ModelResponse:
         reservation = budget.reserve(request)
-        payload: dict[str, Any] = {
-            "model": self.model_id,
-            "messages": [
-                {"role": "system", "content": request.system_prompt},
-                {"role": "user", "content": request.user_prompt},
-            ],
-            "max_tokens": request.max_output_tokens,
-            "stream": False,
-            "temperature": 0,
-        }
+        payload = chat_completion_payload(self.model_id, request)
         response = self._transport.post_json(payload)
-        content, response_model, input_tokens, output_tokens = _parse_response(response)
+        content, response_model, input_tokens, output_tokens = parse_chat_completion_response(
+            response, provider_name="Bailian"
+        )
         budget.settle(
             reservation,
             input_tokens=input_tokens,
@@ -133,27 +130,3 @@ class BailianChatAdapter:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
-
-
-def _parse_response(response: dict[str, Any]) -> tuple[str, str, int, int]:
-    try:
-        choices = response["choices"]
-        first_choice = choices[0]
-        content = first_choice["message"]["content"]
-        usage = response["usage"]
-        input_tokens = usage["prompt_tokens"]
-        output_tokens = usage["completion_tokens"]
-        model_id = response["model"]
-    except (KeyError, IndexError, TypeError) as error:
-        raise AdapterError("Bailian returned an invalid response shape") from error
-
-    if not isinstance(content, str) or not content or "\x00" in content:
-        raise AdapterError("Bailian returned invalid model content")
-    if not isinstance(model_id, str) or not MODEL_ID_PATTERN.fullmatch(model_id):
-        raise AdapterError("Bailian returned an invalid model identifier")
-    token_values = (input_tokens, output_tokens)
-    if any(
-        not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in token_values
-    ):
-        raise AdapterError("Bailian returned invalid token accounting")
-    return content, model_id, input_tokens, output_tokens

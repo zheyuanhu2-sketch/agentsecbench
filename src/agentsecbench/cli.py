@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import uuid
 from collections.abc import Sequence
 from dataclasses import asdict
+from pathlib import Path
 
 from agentsecbench import __version__
 from agentsecbench.adapters import (
@@ -14,6 +16,7 @@ from agentsecbench.adapters import (
     BailianChatAdapter,
     BudgetLedger,
     BudgetLimits,
+    LocalChatAdapter,
     ModelRequest,
 )
 from agentsecbench.artifacts import (
@@ -169,6 +172,49 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         required=True,
         help="Explicitly approve the bounded outbound model requests for this run.",
+    )
+    local_smoke = subparsers.add_parser(
+        "local-smoke",
+        help="Run one fixed synthetic check against a loopback OpenAI-compatible server.",
+    )
+    local_smoke.add_argument(
+        "--approve-local-network",
+        action="store_true",
+        required=True,
+        help="Explicitly approve one request to a literal loopback address.",
+    )
+    local_evaluate = subparsers.add_parser(
+        "local-evaluate",
+        help="Run a bounded synthetic model/tool evaluation on a loopback server.",
+    )
+    local_evaluate.add_argument("--policy", choices=("unsafe", "secure"), default="secure")
+    local_evaluate.add_argument("--task", action="append", dest="tasks")
+    local_evaluate.add_argument("--max-turns", type=int, default=4)
+    local_evaluate.add_argument("--json", action="store_true")
+    local_evaluate.add_argument(
+        "--output", help="Atomically write a trial-identified redacted result artifact."
+    )
+    local_evaluate.add_argument(
+        "--approve-local-network",
+        action="store_true",
+        required=True,
+        help="Explicitly approve bounded requests to a literal loopback address.",
+    )
+    bailian_batch = subparsers.add_parser(
+        "bailian-batch",
+        help="Run two to five identified Bailian trials and aggregate them.",
+    )
+    bailian_batch.add_argument("--policy", choices=("unsafe", "secure"), default="secure")
+    bailian_batch.add_argument("--task", action="append", dest="tasks")
+    bailian_batch.add_argument("--max-turns", type=int, default=4)
+    bailian_batch.add_argument("--trials", type=int, default=2)
+    bailian_batch.add_argument("--output", required=True)
+    bailian_batch.add_argument("--json", action="store_true")
+    bailian_batch.add_argument(
+        "--approve-network",
+        action="store_true",
+        required=True,
+        help="Explicitly approve all bounded outbound requests in this batch.",
     )
     artifact_verify = subparsers.add_parser(
         "artifact-verify", help="Strictly validate a result artifact."
@@ -369,7 +415,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"Experiment SHA-256: {experiment_digest}")
         return 0
 
-    if command == "bailian-smoke":
+    if command in {"bailian-smoke", "local-smoke"}:
         limits = BudgetLimits(
             max_requests=1,
             max_input_bytes_per_request=4_096,
@@ -379,23 +425,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_response_bytes=16_384,
             timeout_seconds=30.0,
         )
+        expected_marker = (
+            "AGENTSECBENCH_BAILIAN_OK" if command == "bailian-smoke" else "AGENTSECBENCH_LOCAL_OK"
+        )
         request = ModelRequest(
-            request_id="bailian-smoke-v1",
+            request_id=("bailian-smoke-v1" if command == "bailian-smoke" else "local-smoke-v1"),
             system_prompt=(
                 "You are a connectivity validator. Do not call tools and do not add explanation."
             ),
-            user_prompt="Reply with exactly AGENTSECBENCH_BAILIAN_OK",
+            user_prompt=f"Reply with exactly {expected_marker}",
             max_output_tokens=32,
         )
+        label = "Bailian" if command == "bailian-smoke" else "Local model"
         try:
-            response = BailianChatAdapter.from_environment(limits).complete(
-                request,
-                BudgetLedger(limits),
+            adapter = (
+                BailianChatAdapter.from_environment(limits)
+                if command == "bailian-smoke"
+                else LocalChatAdapter.from_environment(limits)
             )
+            response = adapter.complete(request, BudgetLedger(limits))
         except (AdapterError, ValueError) as error:
-            print(f"Bailian smoke failed: {error}", file=sys.stderr)
+            print(f"{label} smoke failed: {error}", file=sys.stderr)
             return 1
-        matches = response.content.strip() == "AGENTSECBENCH_BAILIAN_OK"
+        matches = response.content.strip() == expected_marker
         print(f"Adapter: {response.adapter_id}")
         print(f"Model: {response.model_id}")
         print(f"Input tokens: {response.input_tokens}")
@@ -403,7 +455,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Expected content: {matches}")
         return 0 if matches else 1
 
-    if command == "bailian-evaluate":
+    if command in {"bailian-evaluate", "local-evaluate"}:
+        label = "Bailian" if command == "bailian-evaluate" else "Local model"
         try:
             scenarios = _select_model_scenarios(args.tasks)
             if not 1 <= args.max_turns <= MAX_TURNS:
@@ -419,10 +472,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_response_bytes=MAX_DECISION_BYTES,
                 timeout_seconds=30.0,
             )
+            adapter = (
+                BailianChatAdapter.from_environment(limits)
+                if command == "bailian-evaluate"
+                else LocalChatAdapter.from_environment(limits)
+            )
             model_summary = evaluate_model_scenarios(
                 scenarios,
                 policy_from_name(args.policy),
-                BailianChatAdapter.from_environment(limits),
+                adapter,
                 BudgetLedger(limits),
                 max_turns=args.max_turns,
                 max_output_tokens=256,
@@ -436,10 +494,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                         package_version=__version__,
                         catalog_fingerprint=catalog_fingerprint(catalog),
                         max_turns=args.max_turns,
+                        trial_id=str(uuid.uuid4()),
                     ),
                 )
         except (AdapterError, ArtifactValidationError, ValueError) as error:
-            print(f"Bailian evaluation failed: {error}", file=sys.stderr)
+            print(f"{label} evaluation failed: {error}", file=sys.stderr)
             return 1
         if args.json:
             print(json.dumps(_model_summary_dict(model_summary), indent=2, sort_keys=True))
@@ -447,6 +506,81 @@ def main(argv: Sequence[str] | None = None) -> int:
             _print_model_summary(model_summary)
             if artifact_digest is not None:
                 print(f"Artifact SHA-256: {artifact_digest}")
+        return 0
+
+    if command == "bailian-batch":
+        try:
+            scenarios = _select_model_scenarios(args.tasks)
+            if not 1 <= args.max_turns <= MAX_TURNS:
+                raise ValueError(f"max-turns must be between 1 and {MAX_TURNS}")
+            if not 2 <= args.trials <= 5:
+                raise ValueError("trials must be between 2 and 5")
+            output_path = Path(args.output)
+            if output_path.suffix.lower() != ".json":
+                raise ValueError("batch output must be a JSON file")
+            max_requests = len(scenarios) * args.max_turns * args.trials
+            max_total_input_bytes = max_requests * 32_768
+            limits = BudgetLimits(
+                max_requests=max_requests,
+                max_input_bytes_per_request=32_768,
+                max_total_input_bytes=max_total_input_bytes,
+                max_output_tokens_per_request=256,
+                max_total_tokens=max_total_input_bytes + max_requests * 256,
+                max_response_bytes=MAX_DECISION_BYTES,
+                timeout_seconds=30.0,
+            )
+            adapter = BailianChatAdapter.from_environment(limits)
+            ledger = BudgetLedger(limits)
+            result_artifacts = []
+            for trial_number in range(1, args.trials + 1):
+                trial_summary = evaluate_model_scenarios(
+                    scenarios,
+                    policy_from_name(args.policy),
+                    adapter,
+                    ledger,
+                    max_turns=args.max_turns,
+                    max_output_tokens=256,
+                )
+                result_artifact = model_result_artifact(
+                    trial_summary,
+                    package_version=__version__,
+                    catalog_fingerprint=catalog_fingerprint(catalog),
+                    max_turns=args.max_turns,
+                    trial_id=str(uuid.uuid4()),
+                )
+                trial_path = output_path.with_name(
+                    f"{output_path.stem}.trial-{trial_number:02d}.result.json"
+                )
+                write_result_artifact(trial_path, result_artifact)
+                result_artifacts.append(result_artifact)
+            batch_summary = aggregate_result_artifacts(tuple(result_artifacts))
+            batch_digest = write_experiment_summary(output_path, batch_summary)
+        except (
+            AdapterError,
+            ArtifactValidationError,
+            ExperimentAggregationError,
+            ValueError,
+        ) as error:
+            print(f"Bailian batch failed: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(batch_summary.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(f"Trials: {batch_summary.trial_count}")
+            print(f"Model: {batch_summary.model_id}")
+            print(f"Policy: {batch_summary.policy}")
+            print(_format_estimate("Utility", batch_summary.utility, batch_summary.confidence))
+            print(
+                _format_estimate(
+                    "Attack success",
+                    batch_summary.attack_success,
+                    batch_summary.confidence,
+                )
+            )
+            print(
+                f"Tokens: {batch_summary.input_tokens} input, {batch_summary.output_tokens} output"
+            )
+            print(f"Experiment SHA-256: {batch_digest}")
         return 0
 
     if command == "evaluate":

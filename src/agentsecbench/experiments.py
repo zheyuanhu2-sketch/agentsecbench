@@ -82,6 +82,7 @@ class ExperimentSummary:
     confidence: float
     trial_count: int
     source_digests: tuple[str, ...]
+    source_trial_ids: tuple[str, ...]
     utility: BernoulliEstimate
     attack_success: BernoulliEstimate
     false_block: BernoulliEstimate
@@ -107,6 +108,7 @@ class ExperimentSummary:
                 "confidence": self.confidence,
                 "trial_count": self.trial_count,
                 "source_digests": list(self.source_digests),
+                "source_trial_ids": list(self.source_trial_ids),
             },
             "metrics": {
                 "utility": self.utility.to_dict(),
@@ -188,6 +190,7 @@ def _ensure_comparable(artifacts: tuple[ResultArtifact, ...]) -> None:
         )
     baseline = artifacts[0]
     baseline_manifest = (
+        baseline.schema_version,
         baseline.package_version,
         baseline.catalog_fingerprint,
         baseline.mode,
@@ -199,6 +202,7 @@ def _ensure_comparable(artifacts: tuple[ResultArtifact, ...]) -> None:
     baseline_tasks = tuple((task.task_id, task.kind) for task in baseline.tasks)
     for artifact in artifacts[1:]:
         candidate_manifest = (
+            artifact.schema_version,
             artifact.package_version,
             artifact.catalog_fingerprint,
             artifact.mode,
@@ -211,6 +215,11 @@ def _ensure_comparable(artifacts: tuple[ResultArtifact, ...]) -> None:
             raise ExperimentAggregationError("trial manifests are not directly comparable")
         if tuple((task.task_id, task.kind) for task in artifact.tasks) != baseline_tasks:
             raise ExperimentAggregationError("trial task selections are not directly comparable")
+    trial_ids = tuple(artifact.trial_id for artifact in artifacts if artifact.trial_id is not None)
+    if trial_ids and len(trial_ids) != len(artifacts):
+        raise ExperimentAggregationError("trial identity presence is inconsistent")
+    if len(trial_ids) != len(set(trial_ids)):
+        raise ExperimentAggregationError("trial identifiers must be unique")
 
 
 def _task_estimate(
@@ -302,6 +311,9 @@ def aggregate_result_artifacts(
         confidence=round(float(confidence), 4),
         trial_count=len(validated),
         source_digests=tuple(artifact_sha256(artifact) for artifact in validated),
+        source_trial_ids=tuple(
+            artifact.trial_id for artifact in validated if artifact.trial_id is not None
+        ),
         utility=wilson_interval(
             sum(task.utility_success for task in all_tasks),
             len(all_tasks),

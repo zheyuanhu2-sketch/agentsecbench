@@ -20,6 +20,7 @@ Never include credentials, personal data, live exploit targets, or destructive p
 
 The tool runtime is an in-memory simulation. Deterministic runs do not access the network. Opt-in
 model commands may send synthetic prompts to an exact allowlisted Model Studio HTTPS endpoint only
-after explicit operator approval. Model-generated actions cannot spawn processes or read and write
-host files. Any adapter or tool that broadens those capabilities requires a new threat-model review
-and explicit operator approval before merge.
+after explicit operator approval, or to a literal loopback HTTP address after separate local-network
+approval. Model-generated actions cannot spawn processes or read and write host files. Any adapter
+or tool that broadens those capabilities requires a new threat-model review and explicit operator
+approval before merge.

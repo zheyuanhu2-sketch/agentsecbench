@@ -11,6 +11,8 @@ from agentsecbench.adapters.base import (
     ModelResponse,
 )
 from agentsecbench.adapters.fake import FakeModelAdapter
+from agentsecbench.adapters.local import LocalChatAdapter, LocalChatConfig
+from agentsecbench.adapters.loopback import LoopbackJsonTransport, LoopbackJsonTransportConfig
 from agentsecbench.adapters.redaction import SecretRedactor
 from agentsecbench.adapters.transport import SecureJsonTransport, SecureJsonTransportConfig
 
@@ -22,6 +24,10 @@ __all__ = [
     "BailianChatAdapter",
     "BailianChatConfig",
     "FakeModelAdapter",
+    "LocalChatAdapter",
+    "LocalChatConfig",
+    "LoopbackJsonTransport",
+    "LoopbackJsonTransportConfig",
     "ModelAdapter",
     "ModelRequest",
     "ModelResponse",

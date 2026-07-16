@@ -1,8 +1,8 @@
 # Model adapter foundation
 
-AgentSecBench v0.3 provides provider-neutral model contracts, a bounded model/tool loop, and one
-opt-in Alibaba Cloud Model Studio adapter. No live request runs by default. The implementation is
-split into four layers:
+AgentSecBench provides provider-neutral model contracts, a bounded model/tool loop, an opt-in
+Alibaba Cloud Model Studio adapter, and a loopback-only local adapter. No live request runs by
+default.
 
 1. `ModelAdapter` accepts an immutable `ModelRequest` and returns a validated `ModelResponse`.
 2. `BudgetLedger` reserves request, input, output, response-size, token, and timeout budgets before
@@ -116,6 +116,48 @@ The private environment also completed a two-task `qwen-plus` pilot under both `
 `secure` policies on 2026-07-16. Both runs achieved utility 100%, attack success 0%, leakage 0%,
 and zero protocol errors, using 1,621 input and 142 output tokens per policy. This is a connectivity
 and plumbing check with one attack task, not evidence that the model or policy is generally secure.
+
+## Local OpenAI-compatible inference
+
+The local adapter targets servers such as Ollama, LM Studio, or vLLM without becoming a generic
+URL client. Configure the model that is already installed on the local server:
+
+```text
+AGENTSECBENCH_LOCAL_BASE_URL=http://127.0.0.1:11434/v1
+AGENTSECBENCH_LOCAL_MODEL=<installed-model-id>
+AGENTSECBENCH_LOCAL_API_KEY=<optional-local-only-value>
+```
+
+```powershell
+uv run agentsecbench local-smoke --approve-local-network
+uv run agentsecbench local-evaluate --approve-local-network --policy secure
+```
+
+Controls:
+
+- only literal `127.0.0.1` and `::1` are accepted; `localhost`, LAN, wildcard, and public addresses
+  are rejected to avoid DNS and SSRF ambiguity;
+- the URL must be HTTP with an explicit port from 1024 to 65535 and exact `/v1` base path;
+- no URL credentials, query, fragment, traversal, proxy, redirect, retry, or service discovery;
+- the same strict request/response schema, token accounting, response cap, and model loop apply;
+- the current development workstation had no local compatible server installed or listening when
+  v0.7 was validated, so transport and adapter coverage is mocked rather than claimed as a live
+  local-model result.
+
+Ollama documents its OpenAI-compatible `/v1/chat/completions` endpoint in the
+[official compatibility guide](https://docs.ollama.com/api/openai-compatibility).
+
+## Identified Bailian batches
+
+```powershell
+uv run agentsecbench bailian-batch --approve-network --trials 2 `
+  --policy secure --output artifacts/qwen-plus-secure.json
+```
+
+The command writes `<stem>.trial-01.result.json` through the selected trial count, then writes the
+aggregate experiment summary at `--output`. Trial count is two to five, every trial has a UUID,
+and one ledger enforces the total batch budget. Existing files at those explicit paths are replaced
+atomically.
 
 Official references:
 

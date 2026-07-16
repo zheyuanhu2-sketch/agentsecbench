@@ -39,6 +39,8 @@ flowchart LR
   references, dynamic imports, or code execution.
 - `experiments.py`: enforces trial comparability, calculates Wilson intervals, aggregates per-task
   stability and model protocol metadata, and writes canonical experiment summaries.
+- `adapters/loopback.py` and `adapters/local.py`: provide direct literal-loopback HTTP transport
+  and OpenAI-compatible local inference without exposing an arbitrary URL client.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
@@ -60,6 +62,10 @@ flowchart LR
     both exact structural parsing and all catalog invariants before evaluation.
 13. Repeated-trial aggregation rejects manifest/task drift and byte-identical source artifacts;
     every summary retains the canonical digest of every source result.
+14. Local inference accepts only literal IPv4/IPv6 loopback addresses and explicit unprivileged
+    ports; hostnames, LAN addresses, TLS URLs, credentials in URLs, and redirects are rejected.
+15. Model result v2 assigns an explicit trial UUID so byte-identical temperature-zero responses
+    can remain distinct auditable provider calls.
 
 ## Extension contract
 

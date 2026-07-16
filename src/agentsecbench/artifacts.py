@@ -15,7 +15,10 @@ from typing import Any
 from agentsecbench.model_runner import ModelEvaluationSummary
 from agentsecbench.models import ActionRecord, EvaluationSummary, ScenarioResult, TaskKind
 
-RESULT_SCHEMA_VERSION = "agentsecbench.result.v1"
+RESULT_SCHEMA_V1 = "agentsecbench.result.v1"
+RESULT_SCHEMA_V2 = "agentsecbench.result.v2"
+RESULT_SCHEMA_VERSION = RESULT_SCHEMA_V1
+SUPPORTED_RESULT_SCHEMAS = frozenset({RESULT_SCHEMA_V1, RESULT_SCHEMA_V2})
 MAX_ARTIFACT_BYTES = 1_048_576
 MAX_ARTIFACT_TASKS = 1_000
 MAX_RECORDS_PER_TASK = 128
@@ -23,6 +26,7 @@ MAX_REASON_LENGTH = 500
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[A-Za-z0-9.-]+)?")
 IDENTIFIER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}")
+TRIAL_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9.-]{7,127}")
 
 
 class ArtifactValidationError(ValueError):
@@ -82,20 +86,26 @@ class ResultArtifact:
     max_turns: int | None
     metrics: ArtifactMetrics
     tasks: tuple[ArtifactTask, ...]
+    trial_id: str | None = None
     schema_version: str = RESULT_SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, object]:
+        manifest: dict[str, object] = {
+            "package_version": self.package_version,
+            "catalog_fingerprint": self.catalog_fingerprint,
+            "mode": self.mode,
+            "policy": self.policy,
+            "adapter_id": self.adapter_id,
+            "model_id": self.model_id,
+            "max_turns": self.max_turns,
+        }
+        if self.schema_version == RESULT_SCHEMA_V2:
+            manifest["trial_id"] = self.trial_id
+        elif self.schema_version != RESULT_SCHEMA_V1:
+            raise ArtifactValidationError("unsupported result schema version")
         return {
             "schema_version": self.schema_version,
-            "manifest": {
-                "package_version": self.package_version,
-                "catalog_fingerprint": self.catalog_fingerprint,
-                "mode": self.mode,
-                "policy": self.policy,
-                "adapter_id": self.adapter_id,
-                "model_id": self.model_id,
-                "max_turns": self.max_turns,
-            },
+            "manifest": manifest,
             "metrics": {
                 "total_tasks": self.metrics.total_tasks,
                 "normal_tasks": self.metrics.normal_tasks,
@@ -224,6 +234,7 @@ def model_result_artifact(
     package_version: str,
     catalog_fingerprint: str,
     max_turns: int,
+    trial_id: str | None = None,
 ) -> ResultArtifact:
     """Create a redacted model-run artifact with metadata and decisions only."""
 
@@ -260,6 +271,8 @@ def model_result_artifact(
             output_tokens=summary.output_tokens,
         ),
         tasks=tasks,
+        trial_id=trial_id,
+        schema_version=RESULT_SCHEMA_V2 if trial_id is not None else RESULT_SCHEMA_V1,
     )
 
 
@@ -499,23 +512,28 @@ def parse_result_artifact(value: object) -> ResultArtifact:
         frozenset({"schema_version", "manifest", "metrics", "tasks"}),
         "artifact",
     )
-    if root["schema_version"] != RESULT_SCHEMA_VERSION:
+    schema_version = root["schema_version"]
+    if schema_version not in SUPPORTED_RESULT_SCHEMAS:
         raise ArtifactValidationError("unsupported result schema version")
+    manifest_keys = {
+        "package_version",
+        "catalog_fingerprint",
+        "mode",
+        "policy",
+        "adapter_id",
+        "model_id",
+        "max_turns",
+    }
+    if schema_version == RESULT_SCHEMA_V2:
+        manifest_keys.add("trial_id")
     manifest = _exact_object(
         root["manifest"],
-        frozenset(
-            {
-                "package_version",
-                "catalog_fingerprint",
-                "mode",
-                "policy",
-                "adapter_id",
-                "model_id",
-                "max_turns",
-            }
-        ),
+        frozenset(manifest_keys),
         "manifest",
     )
+    trial_id = None
+    if schema_version == RESULT_SCHEMA_V2:
+        trial_id = _string(manifest["trial_id"], "trial identifier", pattern=TRIAL_ID_PATTERN)
     mode = _string(manifest["mode"], "run mode")
     if mode not in {"deterministic", "model"}:
         raise ArtifactValidationError("invalid run mode")
@@ -584,6 +602,8 @@ def parse_result_artifact(value: object) -> ResultArtifact:
         max_turns=max_turns,
         metrics=metrics,
         tasks=tuple(_parse_task(task, mode) for task in tasks_value),
+        trial_id=trial_id,
+        schema_version=schema_version,
     )
     _validate_consistency(artifact)
     return artifact

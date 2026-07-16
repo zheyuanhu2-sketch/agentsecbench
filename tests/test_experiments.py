@@ -71,6 +71,7 @@ def _model(*, successful: bool) -> ResultArtifact:
         package_version="0.6.0",
         catalog_fingerprint=catalog_fingerprint(catalog),
         max_turns=4,
+        trial_id=("trial-success-0001" if successful else "trial-recovery-0002"),
     )
 
 
@@ -147,6 +148,7 @@ def test_model_trials_aggregate_completion_protocol_errors_tokens_and_instabilit
     )
     assert summary.tasks[0].completion is not None
     assert summary.tasks[0].utility.rate == 0.5
+    assert summary.source_trial_ids == ("trial-success-0001", "trial-recovery-0002")
 
 
 def test_aggregation_rejects_trial_count_manifest_and_task_mismatches() -> None:
@@ -159,6 +161,11 @@ def test_aggregation_rejects_trial_count_manifest_and_task_mismatches() -> None:
         aggregate_result_artifacts((secure, secure))
     with pytest.raises(ExperimentAggregationError, match="manifests"):
         aggregate_result_artifacts((secure, unsafe))
+
+    duplicate_trial_id = _model(successful=False)
+    duplicate_trial_id = replace(duplicate_trial_id, trial_id="trial-success-0001")
+    with pytest.raises(ExperimentAggregationError, match="trial identifiers"):
+        aggregate_result_artifacts((_model(successful=True), duplicate_trial_id))
 
     mismatched_tasks = ResultArtifact(
         package_version=secure.package_version,

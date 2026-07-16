@@ -26,6 +26,9 @@ The v0.6 statistics layer aggregates directly comparable trial artifacts into ov
 per-task Wilson confidence intervals, completion/protocol metrics, token totals, and a canonical
 content-free experiment summary. See [`docs/STATISTICS.md`](docs/STATISTICS.md).
 
+The v0.7 execution layer adds a loopback-only OpenAI-compatible adapter for local GPU inference,
+trial-identified `result.v2` artifacts, and a bounded two-to-five-trial Bailian batch workflow.
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -71,11 +74,15 @@ uv run agentsecbench artifact-compare artifacts/unsafe.json artifacts/secure.jso
 uv run agentsecbench catalog-validate examples/scenario-catalog-v1.json
 uv run agentsecbench catalog-evaluate examples/scenario-catalog-v1.json --policy secure
 uv run agentsecbench experiment-aggregate artifacts/trial-1.json artifacts/trial-2.json
+uv run agentsecbench local-smoke --approve-local-network
+uv run agentsecbench local-evaluate --approve-local-network --policy secure
+uv run agentsecbench bailian-batch --approve-network --trials 2 `
+  --output artifacts/qwen-plus-secure.json
 ```
 
 ## Project status
 
-This repository is in private v0.6 development. The v0.1 built-in scenario catalog remains frozen.
+This repository is in private v0.7 development. The v0.1 built-in scenario catalog remains frozen.
 External catalogs use a separate versioned contract. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See

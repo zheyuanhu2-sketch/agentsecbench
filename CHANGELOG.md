@@ -2,6 +2,16 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.7.0 - 2026-07-16
+
+- Add a loopback-only OpenAI-compatible adapter for Ollama, LM Studio, vLLM, and equivalent local
+  servers without DNS, proxy, redirect, retry, or non-loopback URL surfaces.
+- Add backward-compatible `agentsecbench.result.v2` model artifacts with explicit UUID trial IDs.
+- Add `local-smoke`, `local-evaluate`, and a bounded two-to-five-trial `bailian-batch` command.
+- Preserve every batch trial as a redacted result artifact, share one total request/token budget,
+  and emit one canonical confidence-interval experiment summary.
+- Extract and test the shared strict OpenAI-compatible request/response contract.
+
 ## 0.6.0 - 2026-07-16
 
 - Add `agentsecbench.experiment.v1` summaries for repeated result-artifact trials.

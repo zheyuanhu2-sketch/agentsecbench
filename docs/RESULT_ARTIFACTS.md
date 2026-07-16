@@ -1,7 +1,12 @@
 # Result artifacts
 
-AgentSecBench v0.4 defines the canonical `agentsecbench.result.v1` schema. Writing is disabled by
-default and occurs only when the operator supplies `--output`.
+AgentSecBench supports canonical `agentsecbench.result.v1` and `agentsecbench.result.v2` schemas.
+Writing is disabled by default and occurs only when the operator supplies `--output`.
+
+`result.v1` remains the byte-stable deterministic/base format. `result.v2` adds exactly one
+manifest field, `trial_id`, and is emitted for model CLI runs. The UUID distinguishes separately
+executed trials even when a temperature-zero provider returns identical decisions and token counts.
+The loader remains backward compatible with v1.
 
 ## Create and verify
 
@@ -22,7 +27,7 @@ uv run agentsecbench bailian-evaluate --approve-network --policy secure `
 
 ## Included fields
 
-- schema and package version;
+- schema, package version, and v2 trial identity;
 - full catalog SHA-256 fingerprint;
 - deterministic or model mode, policy, adapter/model IDs, and model turn cap;
 - aggregate utility, attack-success, false-block, leakage, and token metrics;
