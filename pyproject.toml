@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentsecbench"
-version = "0.1.0"
+version = "0.2.0"
 description = "A deterministic security benchmark for tool-using AI agents."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -61,4 +61,3 @@ source = ["agentsecbench"]
 [tool.coverage.report]
 fail_under = 90
 show_missing = true
-

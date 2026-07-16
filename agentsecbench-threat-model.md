@@ -2,12 +2,13 @@
 
 ## Executive summary
 
-AgentSecBench v0.1 is a single-user, local CLI benchmark with synthetic data and in-memory tools,
-so it currently has no remote attack surface or real-data confidentiality risk. Its highest-value
+AgentSecBench v0.2 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
+surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable policy views. The largest conditional risks begin
-in v0.2, when a model API introduces network egress and credentials; real tools, public services,
+ground-truth isolation with separate immutable policy views. v0.2 adds one tightly bounded Alibaba
+Cloud Model Studio network path and a user-environment credential; real tools, public services,
 multi-tenancy, and untrusted-code execution remain explicitly out of scope.
 
 ## Scope and assumptions
@@ -26,15 +27,15 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.2 may call a model API through a dedicated adapter, but model output may only propose actions;
-  it may not execute tools directly.
+- v0.2 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
+  output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
   scope and require a new threat-model review before implementation.
 
 Open questions that would materially change risk ranking:
 
-- Which model providers will be supported, and whether any support data-retention opt-outs or
-  local-only inference.
+- Alibaba Cloud Model Studio retention and opt-out settings for this exact workspace, and whether
+  a later local-only inference adapter will be added.
 - Whether future benchmark contributors can submit external scenario files rather than code-
   reviewed built-in fixtures.
 
@@ -59,6 +60,9 @@ Open questions that would materially change risk ranking:
   executes allowed actions, and computes results from evaluator-only labels.
 - **CI/build:** `.github/workflows/ci.yml` uses read-only repository permissions, commit-pinned
   actions, locked dependencies, static analysis, tests, and a deterministic comparison run.
+- **Model adapter foundation:** `src/agentsecbench/adapters/` defines immutable request/response
+  contracts, a deterministic fake adapter, fail-closed token/request budgets, explicit-secret
+  redaction, a secure JSON transport, and the Alibaba Cloud Model Studio adapter.
 
 ### Data flows and trust boundaries
 
@@ -85,9 +89,12 @@ Open questions that would materially change risk ranking:
 - GitHub source -> CI runner: repository code and locked dependency metadata cross into a GitHub-
   hosted runner. Actions are pinned to commits, `GITHUB_TOKEN` has `contents: read`, and no
   artifacts or packages are published. Evidence: `.github/workflows/ci.yml` and `uv.lock`.
-- Model API adapter -> Provider is a **future conditional boundary**: prompts, synthetic task data,
-  API credentials, and model responses would cross HTTPS. No implementation or credential
-  handling exists in v0.1.
+- Bailian adapter -> Alibaba Cloud Model Studio: one fixed synthetic prompt, bearer credential,
+  and model response cross HTTPS only after explicit `--approve-network`. The endpoint must use an
+  official Alibaba Cloud hostname, exact Workspace-compatible path, port 443, no redirects or
+  retries, bounded response size, and generic errors. Evidence:
+  `src/agentsecbench/adapters/bailian.py`, `adapters/transport.py`, and
+  `src/agentsecbench/cli.py:bailian-smoke`.
 
 #### Diagram
 
@@ -102,8 +109,8 @@ flowchart LR
     E --> T["In memory tools"]
     T --> E
     E --> M["Metrics"]
-    A["Future model adapter"] --> V
-    A --> R["Model provider"]
+    A["Bailian adapter"] --> V
+    A --> R["Model Studio"]
 ```
 
 ## Assets and security objectives
@@ -116,7 +123,7 @@ flowchart LR
 | Action provenance and taint state | Missing or forged lineage can authorize an injected side effect | I |
 | Policy decision boundary | Every side effect must be mediated exactly once | I/A |
 | Aggregate and per-task results | Reports and future papers depend on complete, reproducible measurements | I/A |
-| Future model API credentials | Compromise could create cost, account, and data-exposure impact | C/I |
+| Bailian API credential | Compromise could create cost, account, and data-exposure impact | C/I |
 | CI and dependency chain | Compromise can alter releases, tests, or future credential-bearing runs | I/C/A |
 
 ## Attacker model
@@ -126,8 +133,8 @@ flowchart LR
 - A malicious or mistaken contributor can propose changes to scenarios, policies, adapters, CI,
   or dependencies and may attempt to make metrics look better without improving security.
 - Untrusted synthetic mail or file content can contain indirect prompt-injection instructions.
-- A future model response is untrusted and may propose arbitrary tool names, arguments, or
-  incomplete provenance.
+- A Bailian model response is untrusted and may propose arbitrary content; future action parsing
+  must not trust model-supplied provenance.
 - A compromised dependency or CI action can execute with the permissions of the local process or
   CI job.
 
@@ -138,8 +145,9 @@ flowchart LR
 - Benchmark content cannot reach real mail, files, commands, or processes through the current
   `InMemoryEnvironment`.
 - The current catalog contains no real credentials, personal data, or malware.
-- An attacker cannot obtain a model API key from the current repository because no provider
-  adapter or credential-loading path exists.
+- An attacker cannot obtain the Bailian API key from the repository or CLI arguments; it resides in
+  the Windows user environment. Local malware or a compromised dependency remains capable of
+  reading process or user credentials.
 
 ## Entry points and attack surfaces
 
@@ -152,7 +160,7 @@ flowchart LR
 | Synthetic mail and file tools | Policy-approved direct call | Evaluator -> side-effect sandbox | Four exact handlers; no dynamic import or code execution | `src/agentsecbench/tools.py:InMemoryEnvironment.execute` |
 | Path and recipient capabilities | Action arguments | Policy -> tool scope | Deny-by-default checks, but policy configuration remains developer-authored | `src/agentsecbench/policy.py:SecurePolicy.decide` |
 | Dependency installation | `uv sync --locked` | Package registry -> runner | Lockfile present; package provenance still depends on upstream registries | `uv.lock`; `.github/workflows/ci.yml` |
-| Future model adapter | Not implemented | Local process -> model provider | Conditional network and credential surface for v0.2 | `docs/SECURITY_ASSUMPTIONS.md` |
+| Bailian smoke command | Explicit local `--approve-network` | Local process -> Model Studio | Fixed synthetic prompt; no body or key output; exact official host/path | `adapters/bailian.py`; `cli.py:bailian-smoke` |
 
 ## Top abuse paths
 
@@ -169,8 +177,9 @@ flowchart LR
    scenarios -> invariant validation and the frozen catalog fingerprint catch structural or any
    byte-level contract drift -> reviewer must explicitly approve the benchmark change; semantic
    difficulty manipulation remains a review risk.
-5. **Steal future provider credentials:** dependency or adapter is compromised -> process reads an
-   API key -> secret is emitted in a request or log -> account abuse and cost exposure follow.
+5. **Steal provider credentials:** dependency or adapter is compromised -> process reads the
+   user-environment Bailian key -> secret is emitted to another channel -> account abuse and cost
+   exposure follow.
 6. **Exhaust local or cloud resources:** model or external fixture proposes very large values or
    many actions -> missing run-level limits consume memory, tokens, time, or paid quota -> benchmark
    availability and cost controls fail.
@@ -183,17 +192,17 @@ flowchart LR
 | TM-002 | Model adapter or malformed fixture | Provenance remains caller-declared | Omit a tainted dependency from `derived_from` and authorize a side effect | Prompt injection bypass and understated attack rate | Provenance, policy boundary, results | Tainted reads and side-effect checks in `tools.py` and `policy.py` | Provenance is self-attested rather than runtime-derived | Represent arguments as typed references to prior outputs and derive taint in the evaluator; reject raw copied values for protected sinks | Count side effects with empty provenance after reads; provenance-coverage metric | Low in v0.1; medium after model adapters | High | medium |
 | TM-003 | Adapter or future connector author | New code has direct SDK, network, filesystem, or subprocess access | Execute a side effect without passing through evaluator and policy | Real mutation, disclosure, or code execution | Policy boundary, future credentials/data | Only `InMemoryEnvironment` exists; `SECURITY.md` forbids new effects without review | Architectural rule is not process-enforced | Keep real connectors out of adapter process; expose a single broker API that accepts only approved action IDs; deny subprocess and host mounts | Audit all outbound calls; assert every tool receipt maps to one policy decision | Low in v0.1 | High if real tools are added | medium |
 | TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, or trivial attacks | Misleading metrics and irreproducible results | Catalog, results | `validation.py` enforces structural invariants and a stable SHA-256 fingerprint; `tests/test_catalog.py` freezes the digest | No semantic difficulty checks, versioned external schema, or held-out evaluation set | Add a versioned JSON schema before external fixtures, semantic duplicate analysis, benchmark change reports, and a held-out set | CI diff report for task composition, fingerprint, and metric deltas | Low for structural poisoning; medium for semantic manipulation | High | medium |
-| TM-005 | Compromised dependency, adapter, or local malware | v0.2 loads a real provider key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credentials, compute budget | No key exists in v0.1; `.gitignore` excludes `.env*`; secret publication gate | No credential loader, redactor, egress allowlist, or spend limit yet | Load keys only from process environment or OS key store; redact headers; provider-domain allowlist; request and spend limits; never send secrets in benchmark context | Secret scanning, redaction tests, provider usage alerts, per-run budget logs | Not applicable in v0.1; medium in v0.2 | High | high conditional |
+| TM-005 | Compromised dependency, adapter, or local malware | Process can read the user-environment Bailian key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credential, compute budget | Key is outside Git and CLI; official-host and exact-path checks; no redirects/retries/proxies; generic errors; redactor; request/token limits; explicit network approval | User-level environment is readable by same-user processes; key previously appeared in a private task conversation; provider-side spend alert not verified | Rotate the key before publication; use a dedicated low-quota workspace key; enable provider usage alerts; move to OS credential storage if automated runs expand | Secret scans, canary-redaction tests, Model Studio usage alerts, one-request smoke budget | Low in trusted local use | High | medium |
 | TM-006 | Compromised package or CI action | Upstream registry or pinned commit is compromised | Execute code during install or CI and alter tests or source | Build integrity loss; future secret theft | CI, dependencies, source | `uv.lock`; commit-pinned actions; `contents: read`; Dependabot; no publish step | Python registry artifacts are not hash-reviewed manually; local dev environment is trusted | Review lockfile diffs, enable GitHub dependency review and secret scanning where available, use isolated CI with no provider secrets | Dependabot alerts, unexpected lockfile or workflow changes, reproducible build checks | Low | High | medium |
-| TM-007 | Malformed action or future model output | Run-level resource limits are absent | Submit excessive actions, values, or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; fixed 30-scenario catalog; CI timeout | No maximum actions per task, token budget, provider timeout, or total cost ceiling | Add schema limits, action-count cap, API timeout, retry ceiling, token budget, and fail-closed cancellation | Per-task duration, token, retry, and cost metrics with hard alerts | Low in v0.1 | Medium | low |
+| TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter request/input/output/token/response/timeout budgets; smoke command capped at one request; no retries | No RMB-denominated provider budget or multi-turn action-count cap yet | Add run-level action cap and optional provider-price table before batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, retry, request, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
-| TM-009 | Logging or reporting code | Detailed results include model content or future real data | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values; future prompts/data | CLI emits aggregate summaries; tool errors are generic; publication checklist requires synthetic data | Per-task result serialization and model adapters are not yet designed | Central redaction layer; explicit safe-to-log fields; artifacts disabled by default; retention policy | Secret scan generated artifacts; tests with canary values | Low in v0.1 | Low in v0.1; high with real data | low |
+| TM-009 | Logging or reporting code | Detailed results include model content or future real data | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | CLI emits aggregate or smoke metadata only; tool and transport errors are generic; `SecretRedactor` and canary tests exist | Future per-task artifact serialization is not yet designed | Route all future artifacts through explicit safe fields and redaction; disable content artifacts by default; define retention | Secret scan generated artifacts; canary values; tests asserting smoke output omits content | Low | Medium | low |
 
 ## Criticality calibration
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.1 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.2 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -219,7 +228,9 @@ flowchart LR
 | `tests/test_policy.py` | Protects deny-by-default behavior and oracle isolation | TM-001, TM-002, TM-008 |
 | `.github/workflows/ci.yml` | Executes third-party build tooling and enforces release gates | TM-006 |
 | `uv.lock` | Freezes but also introduces the Python dependency supply chain | TM-006 |
-| Future `src/agentsecbench/adapters/` | Will introduce untrusted model output, network egress, and credentials | TM-002, TM-003, TM-005, TM-007, TM-009 |
+| `src/agentsecbench/adapters/base.py` | Owns immutable model contracts and request/token budgets | TM-002, TM-005, TM-007, TM-009 |
+| `src/agentsecbench/adapters/bailian.py` | Owns provider schema, token accounting, and official-host contract | TM-005, TM-007, TM-009 |
+| `src/agentsecbench/adapters/transport.py` | Owns TLS, egress allowlist, credential header, timeout, and response boundary | TM-005, TM-006, TM-007, TM-009 |
 
 ## Quality check
 
@@ -228,4 +239,4 @@ flowchart LR
 - [x] Separated runtime, tests/examples, and CI/build behavior.
 - [x] Reflected the confirmed single-user, local, synthetic, non-public deployment context.
 - [x] Kept real tools, public hosting, multi-tenancy, and untrusted code explicitly out of scope.
-- [x] Listed conditional v0.2 risks without presenting unimplemented controls as existing.
+- [x] Covered the current Bailian boundary and kept expansion risks explicitly conditional.

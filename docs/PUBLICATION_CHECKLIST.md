@@ -10,5 +10,5 @@ Keep the GitHub repository private until every required item is complete.
 - [ ] Verify README claims against checked-in commands and artifacts.
 - [ ] Add a stable benchmark schema and changelog before accepting external scenarios.
 - [ ] Document responsible disclosure and maintainer contact channels.
-- [ ] Create a signed or checksummed v0.1 release candidate.
+- [ ] Create a signed or checksummed v0.2 release candidate.
 - [ ] Review the repository visibility setting immediately before publication.

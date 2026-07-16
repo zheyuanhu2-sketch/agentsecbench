@@ -8,6 +8,10 @@ The v0.1 benchmark is deliberately offline and side-effect free. Mailboxes and f
 in memory; the package does not open network connections, execute subprocesses, or touch the
 host filesystem during a benchmark run.
 
+The v0.2 foundation adds a provider-neutral adapter contract, deterministic fake model, resource
+budgets, secret redaction, and an HTTPS-only JSON transport. No live provider is enabled and no CLI
+command performs a model request. See [`docs/MODEL_ADAPTERS.md`](docs/MODEL_ADAPTERS.md).
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -49,7 +53,8 @@ uv run agentsecbench fingerprint
 
 ## Project status
 
-This repository is in private v0.1 development. The publication gate is documented in
+This repository is in private v0.2 development. The v0.1 scenario catalog remains frozen. The
+publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component model and
 [`docs/SECURITY_ASSUMPTIONS.md`](docs/SECURITY_ASSUMPTIONS.md) for current boundaries.
