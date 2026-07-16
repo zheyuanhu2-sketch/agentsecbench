@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use AgentSecBench, please cite this software."
+title: "AgentSecBench: A deterministic security benchmark for tool-using AI agents"
+type: software
+authors:
+  - family-names: Hu
+    given-names: Zheyuan
+repository-code: "https://github.com/zheyuanhu2-sketch/agentsecbench"
+url: "https://github.com/zheyuanhu2-sketch/agentsecbench"
+version: 0.9.0
+date-released: "2026-07-16"
+license: MIT
+abstract: >-
+  AgentSecBench evaluates whether tool-using AI agents can complete legitimate synthetic work
+  while resisting indirect prompt injection, unauthorized side effects, and sensitive-value
+  exfiltration.
+keywords:
+  - AI agents
+  - benchmark
+  - prompt injection
+  - security

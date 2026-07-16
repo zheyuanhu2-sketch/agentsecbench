@@ -1,5 +1,9 @@
 # AgentSecBench
 
+[![CI](https://github.com/zheyuanhu2-sketch/agentsecbench/actions/workflows/ci.yml/badge.svg)](https://github.com/zheyuanhu2-sketch/agentsecbench/actions/workflows/ci.yml)
+[![Python 3.11-3.14](https://img.shields.io/badge/Python-3.11--3.14-3776AB.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 AgentSecBench is a deterministic security benchmark for tool-using AI agents. It measures
 whether an agent can complete legitimate work while resisting indirect prompt injection,
 unauthorized tool use, and sensitive-data exfiltration.
@@ -35,6 +39,11 @@ installation, and a checksum-producing exact-tag release workflow. See
 [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md) and the
 [`synthetic-data review`](docs/DATA_REVIEW.md).
 
+The v0.9 presentation layer adds a
+[`reproducible showcase`](docs/SHOWCASE.md) backed by checked-in canonical artifacts and exact
+hashes, citation metadata, and structured public issue forms. CI regenerates the complete showcase
+and rejects any byte-level drift.
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -53,6 +62,7 @@ uv sync --locked --dev
 uv run agentsecbench compare
 uv run pytest --cov=agentsecbench --cov-report=term-missing
 uv run python scripts/release_gate.py source
+uv run python scripts/showcase.py check
 ```
 
 Expected comparison for the deterministic catalog:
@@ -64,6 +74,8 @@ Expected comparison for the deterministic catalog:
 
 These numbers validate the benchmark harness, not the security of a real model. Future model
 adapters must be evaluated separately and must not inherit these expected results as claims.
+The exact per-task records and digests are available in the
+[`checked-in showcase`](docs/SHOWCASE.md).
 
 ## Commands
 
@@ -89,7 +101,7 @@ uv run agentsecbench bailian-batch --approve-network --trials 2 `
 
 ## Project status
 
-This repository is in private v0.8 development toward v1.0.0. The v0.1 built-in scenario catalog
+This repository is in private v0.9 development toward v1.0.0. The v0.1 built-in scenario catalog
 remains frozen.
 External catalogs use a separate versioned contract. The
 publication gate is documented in
@@ -102,6 +114,10 @@ publication gate is documented in
 All bundled data is synthetic. Do not add credentials, real email, personal data, malware, or
 instructions that cause real external side effects. Report security concerns using
 [`SECURITY.md`](SECURITY.md).
+
+## Citation
+
+Use the repository's machine-readable [`CITATION.cff`](CITATION.cff) when citing AgentSecBench.
 
 ## License
 

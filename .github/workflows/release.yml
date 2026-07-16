@@ -48,6 +48,7 @@ jobs:
           chmod 0755 actionlint
           ./actionlint
       - run: uv run pytest --cov=agentsecbench --cov-report=term-missing
+      - run: uv run python scripts/showcase.py check
       - run: uv run agentsecbench compare
       - run: uv audit --locked
       - name: Run checksum-pinned Gitleaks over complete history

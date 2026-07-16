@@ -30,15 +30,24 @@ def test_source_release_gate_rejects_mismatched_tag() -> None:
 
 
 def test_release_critical_files_are_tracked() -> None:
-    expected = {
-        ROOT / "LICENSE",
-        ROOT / "README.md",
-        ROOT / "SECURITY.md",
-        ROOT / "pyproject.toml",
-        ROOT / "uv.lock",
+    gate = _gate()
+    expected_relative = {
+        "CITATION.cff",
+        "LICENSE",
+        "README.md",
+        "SECURITY.md",
+        "docs/SHOWCASE.md",
+        "examples/showcase/manifest.json",
+        "examples/showcase/secure.result.json",
+        "examples/showcase/unsafe.result.json",
+        "pyproject.toml",
+        "scripts/showcase.py",
+        "src/agentsecbench/py.typed",
+        "uv.lock",
     }
 
-    assert all(path.is_file() for path in expected)
+    assert expected_relative <= set(gate.REQUIRED_PROJECT_FILES)
+    assert all((ROOT / relative).is_file() for relative in expected_relative)
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/zheyuanhu2-sketch/agentsecbench/security/advisories/new
+    about: Report vulnerabilities privately; never include security details in a public issue.
+  - name: Usage and security boundaries
+    url: https://github.com/zheyuanhu2-sketch/agentsecbench/blob/main/README.md
+    about: Review supported commands, limitations, and safety boundaries before opening an issue.

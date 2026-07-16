@@ -17,6 +17,10 @@ uv run agentsecbench artifact-verify artifacts/secure.json
 uv run agentsecbench artifact-compare artifacts/unsafe.json artifacts/secure.json
 ```
 
+Reviewed deterministic examples are checked in under `examples/showcase/` and documented in
+[`SHOWCASE.md`](SHOWCASE.md). `scripts/showcase.py check` regenerates them and their hashes exactly;
+they are historical evidence for the package version declared in their manifests.
+
 Model evaluation uses the same schema with adapter, model, turn, protocol-error, and token
 metadata:
 
@@ -52,7 +56,8 @@ SHA-256 printed by the CLI is calculated over canonical UTF-8 JSON without the t
 - Writes use a temporary file in the destination directory, owner-only permissions where the OS
   supports them, flush plus `fsync`, and atomic replacement.
 - Existing symbolic-link destinations and symbolic-link destination directories are rejected.
-- `artifacts/` is ignored by Git. Committing a reviewed artifact is a separate explicit decision.
+- `artifacts/` is ignored by Git. The only committed results are generator-owned reviewed files
+  under `examples/showcase/`; committing any other artifact is a separate explicit decision.
 
 Artifact comparison reports candidate-minus-baseline metric deltas and whether the catalog
 fingerprint and ordered task selection match. A comparison with either flag false is descriptive,

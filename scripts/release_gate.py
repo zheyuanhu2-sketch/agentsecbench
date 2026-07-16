@@ -22,7 +22,8 @@ PROJECT_NAME = "agentsecbench"
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 CHANGELOG_PATTERN = re.compile(
-    r"^## (?P<version>[0-9]+\.[0-9]+\.[0-9]+) - [0-9]{4}-[0-9]{2}-[0-9]{2}$",
+    r"^## (?P<version>[0-9]+\.[0-9]+\.[0-9]+) - "
+    r"(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})$",
     re.MULTILINE,
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)\[[^]]+\]\((?P<target>[^)]+)\)")
@@ -34,14 +35,24 @@ MAX_ARCHIVE_MEMBERS = 500
 MAX_ARCHIVE_PATH_LENGTH = 512
 MAX_UNPACKED_BYTES = 20_000_000
 REQUIRED_PROJECT_FILES = (
+    "CITATION.cff",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "LICENSE",
     "README.md",
     "SECURITY.md",
     "agentsecbench-threat-model.md",
+    ".github/ISSUE_TEMPLATE/benchmark_proposal.yml",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
     "docs/PUBLICATION_CHECKLIST.md",
+    "docs/SHOWCASE.md",
+    "examples/showcase/manifest.json",
+    "examples/showcase/secure.result.json",
+    "examples/showcase/unsafe.result.json",
     "pyproject.toml",
+    "scripts/showcase.py",
+    "src/agentsecbench/py.typed",
     "uv.lock",
 )
 
@@ -103,10 +114,30 @@ def _check_required_files() -> None:
         _fail(f"required project file is missing: {missing[0]}")
 
 
-def _check_changelog(version: str) -> None:
+def _check_changelog(version: str) -> str:
     match = CHANGELOG_PATTERN.search(_read_text("CHANGELOG.md"))
     if match is None or match.group("version") != version:
         _fail("the first changelog release does not match the project version")
+    return match.group("date")
+
+
+def _check_citation(version: str, release_date: str) -> None:
+    fields: dict[str, str] = {}
+    for line in _read_text("CITATION.cff").splitlines():
+        if not line or line[0].isspace() or ":" not in line:
+            continue
+        key, value = line.split(":", maxsplit=1)
+        fields[key] = value.strip().strip('"')
+    expected = {
+        "cff-version": "1.2.0",
+        "type": "software",
+        "repository-code": "https://github.com/zheyuanhu2-sketch/agentsecbench",
+        "version": version,
+        "date-released": release_date,
+        "license": "MIT",
+    }
+    if any(fields.get(key) != value for key, value in expected.items()):
+        _fail("citation metadata does not match the release contract")
 
 
 def _markdown_files() -> tuple[Path, ...]:
@@ -203,7 +234,8 @@ def check_source(*, expected_tag: str | None = None) -> str:
         _fail("package and project versions differ")
     if expected_tag is not None and expected_tag != f"v{version}":
         _fail("release tag does not match the project version")
-    _check_changelog(version)
+    release_date = _check_changelog(version)
+    _check_citation(version, release_date)
     _check_local_markdown_links()
     _check_readme_commands()
     _check_synthetic_catalogs()
@@ -268,6 +300,7 @@ def _check_metadata(raw: str, version: str) -> None:
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
+        "Typing :: Typed",
     }
     if not required_classifiers <= classifiers:
         _fail("distribution metadata is missing a required classifier")
@@ -291,6 +324,7 @@ def _check_wheel(path: Path, version: str) -> None:
             required = {
                 f"{PROJECT_NAME}/__init__.py",
                 f"{PROJECT_NAME}/cli.py",
+                f"{PROJECT_NAME}/py.typed",
                 f"{distribution}/METADATA",
                 f"{distribution}/WHEEL",
                 f"{distribution}/entry_points.txt",
@@ -322,14 +356,24 @@ def _check_sdist(path: Path, version: str) -> None:
                 _fail("source distribution contains a non-file archive member")
             required = {
                 f"{prefix}/LICENSE",
+                f"{prefix}/CITATION.cff",
+                f"{prefix}/.github/ISSUE_TEMPLATE/benchmark_proposal.yml",
+                f"{prefix}/.github/ISSUE_TEMPLATE/bug_report.yml",
+                f"{prefix}/.github/ISSUE_TEMPLATE/config.yml",
                 f"{prefix}/README.md",
                 f"{prefix}/SECURITY.md",
                 f"{prefix}/PKG-INFO",
                 f"{prefix}/docs/DATA_REVIEW.md",
                 f"{prefix}/docs/RELEASE_PROCESS.md",
+                f"{prefix}/docs/SHOWCASE.md",
+                f"{prefix}/examples/showcase/manifest.json",
+                f"{prefix}/examples/showcase/secure.result.json",
+                f"{prefix}/examples/showcase/unsafe.result.json",
                 f"{prefix}/pyproject.toml",
                 f"{prefix}/scripts/release_gate.py",
+                f"{prefix}/scripts/showcase.py",
                 f"{prefix}/src/agentsecbench/__init__.py",
+                f"{prefix}/src/agentsecbench/py.typed",
                 f"{prefix}/tests/test_catalog.py",
             }
             if not required <= set(names):

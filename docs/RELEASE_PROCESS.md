@@ -17,11 +17,13 @@ uv run pytest --cov=agentsecbench --cov-report=term-missing
 uv run agentsecbench compare
 uv audit --locked
 uv run python scripts/release_gate.py source
+uv run python scripts/showcase.py check
 ```
 
 The source gate requires one version across `pyproject.toml`, the package, and the first Changelog
-entry. It verifies local Markdown links, README command names, required review files, and synthetic
-fixture conventions. CI repeats tests on Python 3.11, 3.12, 3.13, and 3.14.
+entry. It verifies citation metadata, local Markdown links, README command options, required review
+files, and synthetic fixture conventions. The showcase check rebuilds its artifacts, manifest,
+hashes, and presentation page byte-for-byte. CI repeats tests on Python 3.11, 3.12, 3.13, and 3.14.
 
 ## Reproducible package gate
 

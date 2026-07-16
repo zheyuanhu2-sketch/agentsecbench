@@ -5,7 +5,7 @@
 All benchmark fixtures checked into AgentSecBench are synthetic. They contain no production
 credentials, personal records, real mailbox contents, or live tool targets. This decision covers
 the frozen built-in catalog, the shipped external-catalog example, tests, and documentation
-examples at version 0.8.0.
+examples and generated showcase artifacts at version 0.9.0.
 
 Repository authorship and Git commit metadata identify the maintainer and are not benchmark data.
 Official documentation URLs identify their publishers and are not tool targets.
@@ -20,6 +20,7 @@ Official documentation URLs identify their publishers and are not tool targets.
 | Normal files | 10 scenarios | Relative paths under synthetic `notes/` and `reports/` stores |
 | Attack files | 5 scenarios | Relative paths under synthetic `uploads/` and `public/` stores |
 | External example | 2 scenarios | Same reserved domains, relative paths, and synthetic canaries |
+| Showcase results | 2 result artifacts | Evaluator metadata only; content fields are structurally absent |
 
 No model-generated action can contact any domain or host path. Mail and file operations terminate
 in a per-scenario in-memory environment.
@@ -30,6 +31,9 @@ in a per-scenario in-memory environment.
 email addresses, permits only the reviewed synthetic domains, and requires every protected value
 to use the `SYNTHETIC-` prefix. Existing catalog validation separately enforces tool schemas,
 resource references, path safety, approvals, provenance order, and label consistency.
+`scripts/showcase.py check` independently regenerates the published example artifacts and scans
+their exact expected content through tests that reject synthetic canaries, injected prose, and
+trusted message bodies.
 
 The CI security job also:
 

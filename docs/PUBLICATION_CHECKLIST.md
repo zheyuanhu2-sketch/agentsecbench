@@ -11,6 +11,9 @@ current evidence; an old successful run does not cover later commits.
 - [x] Confirm checked-in benchmark fixtures are synthetic; retain the review in `DATA_REVIEW.md`.
 - [x] Document architecture, assumptions, model boundaries, statistics, and limitations.
 - [x] Document the responsible-disclosure policy and maintainer route in `SECURITY.md`.
+- [x] Publish a machine-verifiable showcase with canonical artifacts, exact hashes, and explicit
+  interpretation limits.
+- [x] Add machine-readable citation metadata and structured synthetic-only issue forms.
 
 ## Automated quality and security
 
@@ -22,6 +25,7 @@ current evidence; an old successful run does not cover later commits.
 - [x] Audit the locked dependency graph with no known advisories.
 - [x] Scan the complete Git history with a checksum-pinned Gitleaks release.
 - [x] Verify README commands, local links, versions, Changelog, and synthetic fixture conventions.
+- [x] Regenerate the checked-in showcase byte-for-byte in CI and the tag release gate.
 - [x] Build the wheel and source distribution twice and require byte-identical output.
 - [x] Validate distribution metadata/archive safety and execute a clean wheel install.
 

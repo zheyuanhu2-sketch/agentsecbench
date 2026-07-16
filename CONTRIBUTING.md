@@ -20,6 +20,7 @@ uv run pytest --cov=agentsecbench --cov-report=term-missing
 uv run agentsecbench compare
 uv audit --locked
 uv run python scripts/release_gate.py source
+uv run python scripts/showcase.py check
 ```
 
 GitHub CI additionally tests Python 3.11 through 3.14, scans the complete Git history with a

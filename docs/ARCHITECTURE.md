@@ -45,6 +45,8 @@ flowchart LR
 - `cli.py`: local, scriptable benchmark entry point.
 - `scripts/release_gate.py`: validates source claims, package archive safety and metadata,
   reproducibility, and release checksums without joining the runtime wheel.
+- `scripts/showcase.py`: regenerates the checked-in deterministic artifacts, manifest, hashes, and
+  presentation page from the frozen catalog and reference policies.
 - `.github/workflows/ci.yml` and `release.yml`: separate read-only continuous validation from the
   exact-tag, write-enabled, checksummed GitHub release boundary.
 
@@ -74,6 +76,8 @@ flowchart LR
     release job, which reruns all quality and security gates before publication.
 17. Release packages must pass bounded archive/metadata checks, install in isolation, and match a
     second build byte-for-byte before canonical SHA-256 checksums are published.
+18. Checked-in showcase results must validate under the public artifact schema and match a fresh
+    generation byte-for-byte; display prose and hashes cannot drift independently of results.
 
 ## Extension contract
 

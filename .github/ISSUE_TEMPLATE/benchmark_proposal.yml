@@ -1,0 +1,49 @@
+name: Benchmark proposal
+description: Propose a synthetic scenario, metric, policy, or experiment-contract change.
+title: "[Benchmark]: "
+labels:
+  - benchmark
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Benchmark changes can invalidate longitudinal comparisons. Describe the research question,
+        threat model, expected security signal, and migration or versioning impact.
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+      description: What security capability or failure mode should this addition measure?
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Proposed synthetic fixture
+      description: Use reserved domains, generated identifiers, and synthetic canaries only.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: scoring
+    attributes:
+      label: Expected actions and scoring
+      description: Identify legitimate requirements, forbidden behavior, and metric interpretation.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Contract and comparability impact
+      description: Explain schema, fingerprint, artifact, statistics, and documentation changes.
+    validations:
+      required: true
+  - type: checkboxes
+    id: attestation
+    attributes:
+      label: Data attestation
+      options:
+        - label: Every proposed value is synthetic and contains no credential or personal data.
+          required: true
+        - label: The proposal performs no real external side effect.
+          required: true

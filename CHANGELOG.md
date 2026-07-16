@@ -2,6 +2,19 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.9.0 - 2026-07-16
+
+- Add a checked-in deterministic showcase with canonical unsafe/secure result artifacts, exact
+  semantic and file SHA-256 values, a machine-readable manifest, and a generated explanatory page.
+- Add a repository-only showcase generator whose check mode rebuilds every published example
+  byte-for-byte and rejects stale or extra files.
+- Add citation metadata and public issue forms for bugs, benchmark proposals, and security-report
+  routing.
+- Mark the runtime wheel as a PEP 561 typed package and require the marker and classifier in
+  distribution validation.
+- Extend source, CI, release, and source-distribution gates to require the showcase and citation
+  contract.
+
 ## 0.8.0 - 2026-07-16
 
 - Add a cross-platform source and distribution release gate covering version/changelog agreement,
