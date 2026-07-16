@@ -1,6 +1,17 @@
 # Changelog
 
-All notable changes use semantic versioning while the repository remains in private development.
+All notable changes use semantic versioning.
+
+## 1.0.0 - 2026-07-16
+
+- Publish the first stable AgentSecBench release while keeping the frozen v0.1 catalog fingerprint,
+  result schemas, experiment contract, and deterministic reference metrics unchanged.
+- Regenerate the machine-verifiable showcase and citation metadata for the exact 1.0.0 package.
+- Mark distribution metadata as production/stable and retain typed-package support across Python
+  3.11 through 3.14.
+- Fix the reproducible-build interpreter at Python 3.11 in both CI and the tag workflow.
+- Add exact-commit-pinned GitHub SLSA provenance attestations for both checksummed release packages.
+- Finalize the public security-reporting, release-verification, and repository-protection process.
 
 ## 0.9.0 - 2026-07-16
 

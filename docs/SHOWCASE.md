@@ -5,7 +5,7 @@ This page is generated from the frozen built-in catalog and the two reference po
 snapshot contains evaluator metadata only: no prompts, tool arguments, tool outputs, message
 bodies, file contents, endpoints, credentials, or synthetic sensitive values.
 
-Catalog SHA-256: `77b6e5ad903fc10f2b521e1951427c10bb061c9775c60878e6f7ecf642613311`. Package version: `0.9.0`.
+Catalog SHA-256: `77b6e5ad903fc10f2b521e1951427c10bb061c9775c60878e6f7ecf642613311`. Package version: `1.0.0`.
 
 ## Deterministic reference result
 
@@ -24,9 +24,9 @@ selection.
 
 | File | Canonical artifact SHA-256 | File SHA-256 |
 |---|---|---|
-| [`unsafe.result.json`](../examples/showcase/unsafe.result.json) | `dccdd5f3532284e456151e69096177f35fd4bb391e73a74f9d8733c6e21655bd` | `150a2b9a40446bd0565723bf23127ac93597bec5fdd4b0e5f8525c491a67b6cd` |
-| [`secure.result.json`](../examples/showcase/secure.result.json) | `f7cc176d54280aa2b4bb6fb2db7878bc1bd7e45eee9ec14b5be3e3a52dfbd3e3` | `e29f55ab01cde0e13a9a2f846279b9235260197d293c84766d96351df07ec197` |
-| [`manifest.json`](../examples/showcase/manifest.json) | n/a | `baac0cf0a2eb3b90ebcbbff1e36beaa8ac62369f36b2bf7ff73ba6f5b7b3b40f` |
+| [`unsafe.result.json`](../examples/showcase/unsafe.result.json) | `5eed7047ae925717a84c0086a7750678e89659379f3fddfad0e2371b55efb90b` | `ba9336248fcb1e09beabfc7ee74e65838a4942d43c1330ee24ed02f25f28beac` |
+| [`secure.result.json`](../examples/showcase/secure.result.json) | `409211bbc6779550e23b8af355bf8ab863a0b8ad4c396cb24f2b2d7b2c31e28f` | `a7c776aea33f058b161a03966fb311ce5fe867e8134fed09ac8a871b9c7b2915` |
+| [`manifest.json`](../examples/showcase/manifest.json) | n/a | `501ca3a214f26734e4ab75ea0671b393d378d68d3f0bfdcabebb95c5fa895f72` |
 
 The artifact digest follows the public artifact contract and excludes the trailing newline. The
 file digest covers the exact checked-in bytes.

@@ -7,7 +7,7 @@ authors:
     given-names: Zheyuan
 repository-code: "https://github.com/zheyuanhu2-sketch/agentsecbench"
 url: "https://github.com/zheyuanhu2-sketch/agentsecbench"
-version: 0.9.0
+version: 1.0.0
 date-released: "2026-07-16"
 license: MIT
 abstract: >-

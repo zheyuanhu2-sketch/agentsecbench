@@ -2,19 +2,20 @@
 
 ## Executive summary
 
-AgentSecBench v0.9 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v1.0 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.9 includes one tightly
+ground-truth isolation with separate immutable and opaque policy views. v1.0 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
 provenance, a user-environment credential, explicit redacted result-artifact writes, and bounded
 external synthetic-catalog reads. It also permits a separate literal-loopback-only local model
 path; real tools, public services, LAN model endpoints, multi-tenancy, and untrusted-code execution
 remain explicitly out of scope. Its release boundary adds locked dependency auditing,
 checksum-pinned workflow and secret scanners, complete-history scanning, byte-reproducible package
-builds, strict distribution inspection, and an exact-tag GitHub release workflow.
+builds, strict distribution inspection, and an exact-tag GitHub release workflow with public
+provenance attestations.
 
 ## Scope and assumptions
 
@@ -33,7 +34,7 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.9 may call Alibaba Cloud Model Studio or a literal-loopback local server through dedicated
+- v1.0 may call Alibaba Cloud Model Studio or a literal-loopback local server through dedicated
   Chat Completions adapters, but model
   output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
@@ -250,7 +251,7 @@ flowchart LR
 | TM-003 | Adapter or future connector author | New code has direct SDK, network, filesystem, or subprocess access | Execute a side effect without passing through evaluator and policy | Real mutation, disclosure, or code execution | Policy boundary, future credentials/data | Only `InMemoryEnvironment` exists; `SECURITY.md` forbids new effects without review | Architectural rule is not process-enforced | Keep real connectors out of adapter process; expose a single broker API that accepts only approved action IDs; deny subprocess and host mounts | Audit all outbound calls; assert every tool receipt maps to one policy decision | Low in v0.1 | High if real tools are added | medium |
 | TM-004 | Contributor or external dataset author | Scenario changes are accepted | Add duplicates, contradictory labels, label leakage, real data, or trivial attacks | Misleading metrics, privacy loss, and irreproducible results | Catalog, results | `agentsecbench.scenario.v1`; bounded duplicate-safe parser; exact fields/tools; synthetic declaration; cross-reference/path/label/policy invariants; stable fingerprint; runnable example | Synthetic classification is author-asserted; no semantic duplicate, difficulty, or held-out-set analysis | Require human data review and fingerprint diff; add semantic duplicate/difficulty reports and a held-out set before benchmark claims | CI catalog diff, canary/PII scan, composition report, fingerprint and metric deltas | Low for structural poisoning; medium for semantic or data-quality manipulation | High | medium |
 | TM-005 | Compromised dependency, adapter, or local malware | Process can read the user-environment Bailian key | Read, log, or exfiltrate the credential | Account abuse, unexpected cost, provider data exposure | API credential, compute budget | Key is outside Git and CLI; official-host and exact-path checks; no redirects/retries/proxies; generic errors; redactor; request/token limits; explicit network approval | User-level environment is readable by same-user processes; key previously appeared in a private task conversation; provider-side spend alert not verified | Rotate the key before publication; use a dedicated low-quota workspace key; enable provider usage alerts; move to OS credential storage if automated runs expand | Secret scans, canary-redaction tests, Model Studio usage alerts, one-request smoke budget | Low in trusted local use | High | medium |
-| TM-006 | Compromised package, scanner, CI action, or release runner | Upstream registry, pinned artifact/commit, or GitHub runner is compromised | Execute during install/build and alter tests or published assets | Release integrity loss; future secret theft | CI, dependencies, source, GitHub release | `uv.lock`; uv-native lockfile-only updates; Dependabot alerts/security fixes; commit-pinned actions; checksum-pinned Gitleaks/Actionlint; OSV audit; read-only ordinary CI; exact-tag release workflow; strict package inspection; repeated byte-identical builds; `SHA256SUMS` | Reproducible builds on the same runner do not defeat a compromised compiler/backend; private GitHub Free cannot use attestations or branch rules; release job has `contents: write` | Review lock/workflow diffs; enable required rules and private vulnerability reporting after publication; add GitHub artifact attestations when public; independently verify release checksums | Dependabot/OSV alerts, full-history scans, unexpected workflow or checksum changes, independent rebuild comparison | Low | High | medium |
+| TM-006 | Compromised package, scanner, CI action, or release runner | Upstream registry, pinned artifact/commit, or GitHub runner is compromised | Execute during install/build and alter tests or published assets | Release integrity loss; future secret theft | CI, dependencies, source, GitHub release | `uv.lock`; uv-native lockfile-only updates; Dependabot alerts/security fixes; commit-pinned actions; checksum-pinned Gitleaks/Actionlint; OSV audit; read-only ordinary CI; exact-tag release workflow; strict package inspection; repeated byte-identical builds; `SHA256SUMS`; exact-commit-pinned GitHub SLSA provenance attestations | Same-run reproducibility and attestations do not defeat a compromised compiler, backend, workflow, or hosted runner; release job has scoped write permissions | Review lock/workflow diffs; enable required rules and private vulnerability reporting; independently verify release checksums and attestation signer identity | Dependabot/OSV alerts, full-history scans, unexpected workflow or checksum changes, independent rebuild and attestation verification | Low | High | medium |
 | TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; two-to-five-trial batch cap; one shared ledger; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, trial, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
 | TM-009 | Logging, artifact, showcase, or reporting code | A future schema or generator change admits content fields | Print or persist sensitive values in errors or public artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | Exact result allowlist; prompts/arguments/outputs absent; bounded canonical serializer and strict parser; output disabled by default; showcase byte regeneration, strict loading, semantic delta check, and content-canary tests | A contributor can intentionally change generator, schema, tests, and expected files together; user-selected output remains host state | Require threat-model and schema-version review for any content field; independently review generated diffs; keep raw transcripts out of scope | Secret canaries, unknown-field tests, showcase regeneration, artifact diff review, repository/history secret scans | Low | Medium | low |
@@ -260,7 +261,7 @@ flowchart LR
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.9 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v1.0 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled

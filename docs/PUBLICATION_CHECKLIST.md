@@ -38,6 +38,7 @@ current evidence; an old successful run does not cover later commits.
 - [ ] Enable and test GitHub private vulnerability reporting immediately after publication.
 - [ ] Enable a `main` ruleset requiring all CI jobs and blocking force push/deletion.
 - [ ] Push the exact `v1.0.0` tag and observe a green release workflow.
+- [ ] Publish and independently verify GitHub provenance attestations for both package archives.
 - [ ] Independently download and verify the wheel, source archive, and `SHA256SUMS`.
 - [ ] Verify repository visibility, default branch, license, topics, security settings, and release
   presentation from a signed-out browser session.

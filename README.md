@@ -44,6 +44,9 @@ The v0.9 presentation layer adds a
 hashes, citation metadata, and structured public issue forms. CI regenerates the complete showcase
 and rejects any byte-level drift.
 
+The v1.0 release freezes these contracts as the first stable public version and adds
+exact-commit-pinned GitHub provenance attestations for the checksummed wheel and source archive.
+
 ## What v0.1 measures
 
 - 20 legitimate tasks across mail and file workflows.
@@ -101,8 +104,8 @@ uv run agentsecbench bailian-batch --approve-network --trials 2 `
 
 ## Project status
 
-This repository is in private v0.9 development toward v1.0.0. The v0.1 built-in scenario catalog
-remains frozen.
+AgentSecBench 1.0.0 is the first stable public release. The v0.1 built-in scenario catalog remains
+frozen.
 External catalogs use a separate versioned contract. The
 publication gate is documented in
 [`docs/PUBLICATION_CHECKLIST.md`](docs/PUBLICATION_CHECKLIST.md). See

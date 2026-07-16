@@ -7,6 +7,9 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -65,8 +68,10 @@ jobs:
         run: |
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           export SOURCE_DATE_EPOCH
-          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-a" --no-create-gitignore
-          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-b" --no-create-gitignore
+          uv build --python 3.11 \
+            --out-dir "$RUNNER_TEMP/agentsecbench-dist-a" --no-create-gitignore
+          uv build --python 3.11 \
+            --out-dir "$RUNNER_TEMP/agentsecbench-dist-b" --no-create-gitignore
       - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-a"
       - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-b"
       - run: >
@@ -92,6 +97,10 @@ jobs:
             --python "$RUNNER_TEMP/agentsecbench-release-venv/bin/python" \
             "$RUNNER_TEMP/agentsecbench-release/"*.whl
           "$RUNNER_TEMP/agentsecbench-release-venv/bin/agentsecbench" compare
+      - name: Publish SLSA provenance attestations
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-checksums: ${{ runner.temp }}/agentsecbench-release/SHA256SUMS
       - name: Publish immutable GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}

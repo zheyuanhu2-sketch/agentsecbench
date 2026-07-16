@@ -2,18 +2,19 @@
 
 ## Supported versions
 
-Only the latest commit on the default branch is supported during private development.
+| Version | Supported |
+|---|---|
+| 1.0.x | Yes |
+| < 1.0 | No |
 
 ## Reporting a vulnerability
 
-After publication, use GitHub's
+Use GitHub's
 [private vulnerability report](https://github.com/zheyuanhu2-sketch/agentsecbench/security/advisories/new).
-GitHub Free exposes that setting only after the repository becomes public, so the channel must be
-enabled and tested immediately after the visibility transition and before the v1.0 announcement.
 Do not put security details in a public issue.
 
-During private development, invited collaborators should create a draft repository security
-advisory and notify maintainer
+Until private vulnerability reporting is enabled, invited collaborators should create a draft
+repository security advisory and notify maintainer
 [`@zheyuanhu2-sketch`](https://github.com/zheyuanhu2-sketch). Include:
 
 - the affected commit;

@@ -1,8 +1,8 @@
 # Release process
 
 AgentSecBench releases are built from exact semantic-version tags. The tag workflow publishes one
-wheel, one source distribution, and `SHA256SUMS`; it does not publish to PyPI or change repository
-visibility.
+wheel, one source distribution, `SHA256SUMS`, and GitHub-hosted SLSA provenance attestations; it
+does not publish to PyPI or change repository visibility.
 
 ## Source gate
 
@@ -27,14 +27,16 @@ hashes, and presentation page byte-for-byte. CI repeats tests on Python 3.11, 3.
 
 ## Reproducible package gate
 
-CI derives `SOURCE_DATE_EPOCH` from the release commit and performs two independent `uv build`
-runs into separate runner-temporary directories outside the source tree. Keeping outputs outside
-the source tree is mandatory: an in-tree first build would change the file set seen by the second
-source-distribution build. `scripts/release_gate.py artifacts` validates archive paths, exact
-package metadata, license, console entry point, runtime/source contents, and stale output
-exclusion. The `compare` subcommand then requires both wheels and both source distributions to be
-byte-identical. Finally, CI installs the wheel into an isolated environment and runs the
-deterministic comparison.
+CI fixes the build interpreter at Python 3.11, derives `SOURCE_DATE_EPOCH` from the release commit,
+and performs two independent `uv build` runs into separate runner-temporary directories outside the
+source tree. Keeping outputs outside the source tree is mandatory: an in-tree first build would
+change the file set seen by the second source-distribution build. `scripts/release_gate.py
+artifacts` validates archive paths, exact package metadata, license, console entry point,
+runtime/source contents, and stale output exclusion. The `compare` subcommand then requires both
+wheels and both source distributions to be byte-identical. Finally, CI installs the wheel into an
+isolated environment and runs the deterministic comparison. The public tag workflow passes the
+verified checksum file to the exact-commit-pinned `actions/attest` action so the wheel and source
+archive receive GitHub-hosted SLSA provenance statements before release publication.
 
 ## Security gate
 
@@ -57,16 +59,28 @@ Only after every applicable pre-tag item in `PUBLICATION_CHECKLIST.md` is comple
 3. Merge the exact commit after all required GitHub checks pass.
 4. Create and push the exact tag, for example `v1.0.0`.
 5. The tag workflow reruns all gates, builds twice, writes canonical SHA-256 checksums, verifies an
-   isolated install, and creates the GitHub release.
-6. Download the three release assets and verify `SHA256SUMS` before announcing the release.
+   isolated install, publishes provenance attestations, and creates the GitHub release.
+6. Download the three release assets, verify `SHA256SUMS`, and verify each package attestation
+   before announcing the release:
+
+   ```powershell
+   gh attestation verify agentsecbench-1.0.0-py3-none-any.whl `
+     --repo zheyuanhu2-sketch/agentsecbench `
+     --signer-workflow zheyuanhu2-sketch/agentsecbench/.github/workflows/release.yml `
+     --deny-self-hosted-runners
+   gh attestation verify agentsecbench-1.0.0.tar.gz `
+     --repo zheyuanhu2-sketch/agentsecbench `
+     --signer-workflow zheyuanhu2-sketch/agentsecbench/.github/workflows/release.yml `
+     --deny-self-hosted-runners
+   ```
 
 The workflow refuses a tag that differs from the package version. A failed workflow must be fixed
 with a new commit and version/tag; published release assets are not silently replaced.
 
 ## GitHub publication transition
 
-The current GitHub Free private repository cannot configure branch protection or private
-vulnerability reporting. Immediately before public v1.0 publication:
+On GitHub Free, rulesets, private vulnerability reporting, and artifact attestations require this
+repository to be public. Immediately before public v1.0 publication:
 
 1. confirm the previously exposed development provider key has been rotated;
 2. make the repository public only when all repository-local gates are green;

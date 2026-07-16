@@ -48,7 +48,7 @@ flowchart LR
 - `scripts/showcase.py`: regenerates the checked-in deterministic artifacts, manifest, hashes, and
   presentation page from the frozen catalog and reference policies.
 - `.github/workflows/ci.yml` and `release.yml`: separate read-only continuous validation from the
-  exact-tag, write-enabled, checksummed GitHub release boundary.
+  exact-tag, write-enabled, checksummed and provenance-attested GitHub release boundary.
 
 ## Security invariants
 

@@ -40,7 +40,7 @@ def test_showcase_manifest_matches_validated_artifacts() -> None:
     secure = load_result_artifact(showcase.SECURE_PATH)
 
     assert manifest["schema_version"] == "agentsecbench.showcase.v1"
-    assert manifest["package_version"] == "0.9.0"
+    assert manifest["package_version"] == "1.0.0"
     assert manifest["catalog_fingerprint"] == unsafe.catalog_fingerprint
     assert manifest["artifacts"]["unsafe"]["artifact_sha256"] == artifact_sha256(unsafe)
     assert manifest["artifacts"]["secure"]["artifact_sha256"] == artifact_sha256(secure)

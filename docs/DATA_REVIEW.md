@@ -5,7 +5,7 @@
 All benchmark fixtures checked into AgentSecBench are synthetic. They contain no production
 credentials, personal records, real mailbox contents, or live tool targets. This decision covers
 the frozen built-in catalog, the shipped external-catalog example, tests, and documentation
-examples and generated showcase artifacts at version 0.9.0.
+examples and generated showcase artifacts at version 1.0.0.
 
 Repository authorship and Git commit metadata identify the maintainer and are not benchmark data.
 Official documentation URLs identify their publishers and are not tool targets.
