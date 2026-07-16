@@ -2,15 +2,15 @@
 
 ## Executive summary
 
-AgentSecBench v0.3 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
+AgentSecBench v0.4 is a single-user, local CLI benchmark with a frozen v0.1 scenario catalog,
 synthetic data, in-memory tools, and one opt-in model API path. It has no inbound remote attack
 surface or real-data confidentiality risk. Its highest-value
 security objective is benchmark integrity: a policy must not read evaluator labels, launder
 untrusted provenance, bypass the policy boundary, or poison metrics. The repository now enforces
-ground-truth isolation with separate immutable and opaque policy views. v0.3 adds one tightly
+ground-truth isolation with separate immutable and opaque policy views. v0.4 includes one tightly
 bounded Alibaba Cloud Model Studio network path, strict model-decision parsing, runtime-derived
-provenance, and a user-environment credential; real tools, public services, multi-tenancy, and
-untrusted-code execution remain explicitly out of scope.
+provenance, a user-environment credential, and explicit redacted result-artifact writes; real
+tools, public services, multi-tenancy, and untrusted-code execution remain explicitly out of scope.
 
 ## Scope and assumptions
 
@@ -28,7 +28,7 @@ Confirmed assumptions:
   multi-tenancy.
 - All bundled messages, files, prompts, and sensitive values are synthetic.
 - Core benchmark tools must not access the host filesystem, network, database, or subprocesses.
-- v0.3 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
+- v0.4 may call Alibaba Cloud Model Studio through a dedicated Chat Completions adapter, but model
   output may only propose actions; it may not execute tools directly.
 - Public web exposure, real mail or file connectors, and untrusted-code execution are out of
   scope and require a new threat-model review before implementation.
@@ -66,6 +66,8 @@ Open questions that would materially change risk ranking:
   redaction, a secure JSON transport, and the Alibaba Cloud Model Studio adapter.
 - **Model runner:** `src/agentsecbench/model_runner.py` validates one exact JSON decision per turn,
   assigns action identity and provenance, mediates the policy, and invokes only in-memory tools.
+- **Artifact boundary:** `src/agentsecbench/artifacts.py` serializes an exact content-free result
+  schema and performs bounded duplicate-safe loading plus atomic opt-in host-file writes.
 
 ### Data flows and trust boundaries
 
@@ -99,6 +101,10 @@ Open questions that would materially change risk ranking:
   retries, bounded response size, and generic errors. Evidence:
   `src/agentsecbench/adapters/bailian.py`, `adapters/transport.py`, and
   `src/agentsecbench/cli.py:bailian-smoke` and `bailian-evaluate`.
+- Evaluator/model runner -> Result artifact: only manifest, metrics, Boolean outcomes, action/tool
+  identifiers, statuses, generic reasons, and bounded runtime metadata cross into an operator-
+  selected JSON file. Prompts, arguments, outputs, synthetic secrets, endpoints, timestamps, and
+  machine paths are absent. Evidence: `src/agentsecbench/artifacts.py`.
 
 #### Diagram
 
@@ -165,6 +171,7 @@ flowchart LR
 | Path and recipient capabilities | Action arguments | Policy -> tool scope | Deny-by-default checks, but policy configuration remains developer-authored | `src/agentsecbench/policy.py:SecurePolicy.decide` |
 | Dependency installation | `uv sync --locked` | Package registry -> runner | Lockfile present; package provenance still depends on upstream registries | `uv.lock`; `.github/workflows/ci.yml` |
 | Bailian live commands | Explicit local `--approve-network` | Local process -> Model Studio | Bounded synthetic prompts; metadata-only output; exact official host/path | `adapters/bailian.py`; `cli.py:bailian-smoke`; `cli.py:bailian-evaluate` |
+| Result artifact commands | Explicit `--output` or artifact path | Process -> host file / host file -> validator | Exact 1 MiB schema, atomic writes, symlink rejection, duplicate-key rejection, no content fields | `artifacts.py`; `cli.py:artifact-verify`; `cli.py:artifact-compare` |
 
 ## Top abuse paths
 
@@ -201,13 +208,13 @@ flowchart LR
 | TM-006 | Compromised package or CI action | Upstream registry or pinned commit is compromised | Execute code during install or CI and alter tests or source | Build integrity loss; future secret theft | CI, dependencies, source | `uv.lock`; commit-pinned actions; `contents: read`; Dependabot; no publish step | Python registry artifacts are not hash-reviewed manually; local dev environment is trusted | Review lockfile diffs, enable GitHub dependency review and secret scanning where available, use isolated CI with no provider secrets | Dependabot alerts, unexpected lockfile or workflow changes, reproducible build checks | Low | High | medium |
 | TM-007 | Malformed action or model output | A run reaches an adapter or tool boundary | Submit excessive values or model requests | Local/cloud denial of service or cost spike | Availability, compute budget | Tool values capped at 16 KiB; adapter budgets; one-to-six-turn cap; at most four selected tasks; duplicate-call rejection; no retries | No RMB-denominated provider budget yet | Add an optional provider-price table before larger batch experiments; keep cloud budget alerts authoritative | Per-task duration, token, request, and estimated-cost metrics | Low | Medium | low |
 | TM-008 | Misconfiguration or policy regression | Capability strings are authored incorrectly | Broaden recipient domain, write prefix, approval set, or tool allowlist | Synthetic unauthorized side effect; future real impact if reused | Policy configuration, results | Deny-by-default checks and branch tests in `policy.py` and `tests/test_policy.py` | Prefix/domain policy lacks a constructor-time validator and environment binding | Validate and normalize all capabilities at scenario load; require exact structured domains and path segments; forbid empty or wildcard scopes | CI policy-lint report; log scope used for every decision | Medium | Medium in v0.1 | medium |
-| TM-009 | Logging or reporting code | Detailed results include model content or future real data | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | CLI emits aggregate or smoke metadata only; tool and transport errors are generic; `SecretRedactor` and canary tests exist | Future per-task artifact serialization is not yet designed | Route all future artifacts through explicit safe fields and redaction; disable content artifacts by default; define retention | Secret scan generated artifacts; canary values; tests asserting smoke output omits content | Low | Medium | low |
+| TM-009 | Logging, artifact, or reporting code | A future schema change admits content fields | Print or persist sensitive values in errors or artifacts | Data disclosure and contaminated public artifacts | Synthetic values, prompts, provider response | Exact `agentsecbench.result.v1` allowlist; prompts/arguments/outputs absent; bounded canonical serializer and strict parser; artifact canary tests; output disabled by default | A contributor can intentionally change both schema and tests; user-selected output remains host state | Require threat-model and schema-version review for any content field; scan generated and committed artifacts; keep raw transcripts out of scope | Secret canaries, unknown-field tests, artifact diff review, repository/history secret scans | Low | Medium | low |
 
 ## Criticality calibration
 
 - **Critical:** immediate compromise of real systems without trusted-developer action. Examples:
   pre-auth remote code execution in a future public runner; sandbox escape into a host with real
-  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.3 threat
+  connector credentials; cross-tenant access in a future hosted benchmark. No current v0.4 threat
   meets this threshold.
 - **High:** major benchmark or credential compromise with plausible project-level impact. Examples:
   systematic ground-truth oracle access that invalidates published results; theft of an enabled
@@ -227,6 +234,7 @@ flowchart LR
 | `src/agentsecbench/evaluator.py` | Must mediate each action exactly once and retain labels privately | TM-001, TM-002, TM-003 |
 | `src/agentsecbench/boundary.py` | Hides fixture identity and binds opaque approvals and provenance | TM-001, TM-002 |
 | `src/agentsecbench/model_runner.py` | Parses untrusted model decisions, derives provenance, caps loops, and scores dynamic actions | TM-001, TM-002, TM-003, TM-007, TM-009 |
+| `src/agentsecbench/artifacts.py` | Owns safe result fields, strict loading, digests, and atomic host writes | TM-004, TM-007, TM-009 |
 | `src/agentsecbench/policy.py` | Implements capabilities, approval, taint, and sink checks | TM-002, TM-008 |
 | `src/agentsecbench/tools.py` | Current side-effect boundary and parser/input-validation choke point | TM-003, TM-007, TM-009 |
 | `src/agentsecbench/catalog.py` | Owns benchmark composition, labels, and synthetic secrets | TM-004, TM-008 |

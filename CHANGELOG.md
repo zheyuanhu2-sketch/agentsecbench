@@ -2,6 +2,14 @@
 
 All notable changes use semantic versioning while the repository remains in private development.
 
+## 0.4.0 - 2026-07-16
+
+- Add canonical `agentsecbench.result.v1` artifacts for deterministic and model evaluations.
+- Exclude prompts, arguments, tool outputs, synthetic values, timestamps, and machine paths.
+- Add bounded duplicate-key-safe loading, schema/metric consistency checks, atomic owner-only
+  writes, stable SHA-256 digests, and artifact comparison.
+- Add `--output`, `artifact-verify`, and `artifact-compare` CLI workflows.
+
 ## 0.3.0 - 2026-07-16
 
 - Add a bounded, strict-JSON model/tool evaluation loop.

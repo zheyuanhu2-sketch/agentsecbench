@@ -33,6 +33,8 @@ flowchart LR
 - `boundary.py`: maps evaluator-owned action, approval, and provenance IDs to opaque policy IDs.
 - `model_runner.py`: validates model decisions, derives provenance, mediates actions, and aggregates
   model-run metadata.
+- `artifacts.py`: builds, atomically writes, strictly loads, fingerprints, and compares redacted
+  result artifacts.
 - `validation.py`: rejects inconsistent fixtures and fingerprints the evaluated contract.
 - `cli.py`: local, scriptable benchmark entry point.
 
@@ -48,6 +50,8 @@ flowchart LR
 8. Policy inputs are immutable copies that exclude benchmark ground truth.
 9. Model output cannot declare action IDs or provenance; both are assigned by the runtime.
 10. Policy-visible identifiers are opaque and stable only within one scenario run.
+11. Result artifacts use an exact schema and cannot contain tool arguments, output content,
+    prompts, timestamps, or machine-specific paths.
 
 ## Extension contract
 

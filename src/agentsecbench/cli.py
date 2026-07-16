@@ -8,12 +8,22 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
+from agentsecbench import __version__
 from agentsecbench.adapters import (
     AdapterError,
     BailianChatAdapter,
     BudgetLedger,
     BudgetLimits,
     ModelRequest,
+)
+from agentsecbench.artifacts import (
+    ArtifactValidationError,
+    artifact_sha256,
+    compare_result_artifacts,
+    deterministic_result_artifact,
+    load_result_artifact,
+    model_result_artifact,
+    write_result_artifact,
 )
 from agentsecbench.catalog import build_catalog
 from agentsecbench.evaluator import evaluate_catalog
@@ -104,6 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
     evaluate = subparsers.add_parser("evaluate", help="Evaluate one policy.")
     evaluate.add_argument("--policy", choices=("unsafe", "secure"), default="secure")
     evaluate.add_argument("--json", action="store_true", help="Emit a compact JSON summary.")
+    evaluate.add_argument("--output", help="Atomically write a safe canonical JSON artifact.")
 
     subparsers.add_parser("compare", help="Compare unsafe and secure policies.")
     subparsers.add_parser("list", help="List scenario identifiers and kinds.")
@@ -135,11 +146,24 @@ def _build_parser() -> argparse.ArgumentParser:
     bailian_evaluate.add_argument("--max-turns", type=int, default=4)
     bailian_evaluate.add_argument("--json", action="store_true")
     bailian_evaluate.add_argument(
+        "--output", help="Atomically write a redacted canonical JSON artifact."
+    )
+    bailian_evaluate.add_argument(
         "--approve-network",
         action="store_true",
         required=True,
         help="Explicitly approve the bounded outbound model requests for this run.",
     )
+    artifact_verify = subparsers.add_parser(
+        "artifact-verify", help="Strictly validate a result artifact."
+    )
+    artifact_verify.add_argument("path")
+    artifact_compare = subparsers.add_parser(
+        "artifact-compare", help="Compare two validated result artifacts."
+    )
+    artifact_compare.add_argument("baseline")
+    artifact_compare.add_argument("candidate")
+    artifact_compare.add_argument("--json", action="store_true")
     return parser
 
 
@@ -170,6 +194,39 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if command == "fingerprint":
         print(catalog_fingerprint(catalog))
+        return 0
+
+    if command == "artifact-verify":
+        try:
+            artifact = load_result_artifact(args.path)
+        except ArtifactValidationError as error:
+            print(f"Artifact verification failed: {error}", file=sys.stderr)
+            return 1
+        print(f"Schema: {artifact.schema_version}")
+        print(f"Mode: {artifact.mode}")
+        print(f"Policy: {artifact.policy}")
+        print(f"Tasks: {artifact.metrics.total_tasks}")
+        print(f"SHA-256: {artifact_sha256(artifact)}")
+        return 0
+
+    if command == "artifact-compare":
+        try:
+            comparison = compare_result_artifacts(
+                load_result_artifact(args.baseline),
+                load_result_artifact(args.candidate),
+            )
+        except ArtifactValidationError as error:
+            print(f"Artifact comparison failed: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(comparison.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(f"Same catalog: {comparison.same_catalog}")
+            print(f"Same task selection: {comparison.same_task_selection}")
+            print(f"Utility delta: {comparison.utility_delta:+.0%}")
+            print(f"Attack success delta: {comparison.attack_success_delta:+.0%}")
+            print(f"False-block delta: {comparison.false_block_delta:+.0%}")
+            print(f"Leakage delta: {comparison.leakage_delta:+.0%}")
         return 0
 
     if command == "bailian-smoke":
@@ -230,21 +287,50 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_turns=args.max_turns,
                 max_output_tokens=256,
             )
-        except (AdapterError, ValueError) as error:
+            artifact_digest = None
+            if args.output:
+                artifact_digest = write_result_artifact(
+                    args.output,
+                    model_result_artifact(
+                        model_summary,
+                        package_version=__version__,
+                        catalog_fingerprint=catalog_fingerprint(catalog),
+                        max_turns=args.max_turns,
+                    ),
+                )
+        except (AdapterError, ArtifactValidationError, ValueError) as error:
             print(f"Bailian evaluation failed: {error}", file=sys.stderr)
             return 1
         if args.json:
             print(json.dumps(_model_summary_dict(model_summary), indent=2, sort_keys=True))
         else:
             _print_model_summary(model_summary)
+            if artifact_digest is not None:
+                print(f"Artifact SHA-256: {artifact_digest}")
         return 0
 
     if command == "evaluate":
         summary = evaluate_catalog(catalog, policy_from_name(args.policy))
+        artifact_digest = None
+        if args.output:
+            try:
+                artifact_digest = write_result_artifact(
+                    args.output,
+                    deterministic_result_artifact(
+                        summary,
+                        package_version=__version__,
+                        catalog_fingerprint=catalog_fingerprint(catalog),
+                    ),
+                )
+            except ArtifactValidationError as error:
+                print(f"Artifact write failed: {error}", file=sys.stderr)
+                return 1
         if args.json:
             print(json.dumps(_summary_dict(summary), indent=2, sort_keys=True))
         else:
             _print_summary(summary)
+            if artifact_digest is not None:
+                print(f"Artifact SHA-256: {artifact_digest}")
         return 0
 
     for name in ("unsafe", "secure"):

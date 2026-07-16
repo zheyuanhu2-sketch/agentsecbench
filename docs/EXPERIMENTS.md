@@ -44,3 +44,11 @@ synthetic canary, while the secure policy blocks it through runtime-derived tain
 
 No raw prompts, model responses, endpoint, or credential were stored. A publishable model claim
 requires the larger repeated-trial protocol planned after v0.3.
+
+## Reproducible result record
+
+Starting in v0.4, deterministic and model runs may explicitly write a canonical
+`agentsecbench.result.v1` artifact. Its manifest fixes package version, full catalog fingerprint,
+mode, policy, provider/model identity, and the turn cap. Per-task records contain only evaluator
+IDs, tool names, statuses, generic policy reasons, Boolean outcomes, and bounded runtime metadata.
+See [`RESULT_ARTIFACTS.md`](RESULT_ARTIFACTS.md).

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -47,6 +48,7 @@ def test_fingerprint_cli_emits_sha256(capsys: pytest.CaptureFixture[str]) -> Non
 def test_bailian_evaluate_cli_emits_only_safe_model_metadata(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
 ) -> None:
     adapter = FakeModelAdapter(
         {
@@ -71,7 +73,21 @@ def test_bailian_evaluate_cli_emits_only_safe_model_metadata(
         classmethod(lambda _cls, _limits: adapter),
     )
 
-    assert main(("bailian-evaluate", "--approve-network", "--policy", "secure", "--json")) == 0
+    model_artifact = tmp_path / "model.json"
+    assert (
+        main(
+            (
+                "bailian-evaluate",
+                "--approve-network",
+                "--policy",
+                "secure",
+                "--json",
+                "--output",
+                str(model_artifact),
+            )
+        )
+        == 0
+    )
     output = capsys.readouterr().out
     payload = json.loads(output)
 
@@ -80,12 +96,47 @@ def test_bailian_evaluate_cli_emits_only_safe_model_metadata(
     assert payload["attack_success_rate"] == 0.0
     assert "SYNTHETIC-SECRET" not in output
     assert "Untrusted content" not in output
+    assert model_artifact.is_file()
 
     assert main(("bailian-evaluate", "--approve-network", "--policy", "secure")) == 0
     text_output = capsys.readouterr().out
     assert "Adapter: offline.fake" in text_output
     assert "Task: normal-mail-01" in text_output
     assert "Tokens:" in text_output
+
+
+def test_artifact_cli_write_verify_and_compare(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    unsafe = tmp_path / "unsafe.json"
+    secure = tmp_path / "secure.json"
+
+    assert main(("evaluate", "--policy", "unsafe", "--output", str(unsafe))) == 0
+    assert "Artifact SHA-256:" in capsys.readouterr().out
+    assert main(("evaluate", "--policy", "secure", "--output", str(secure))) == 0
+    capsys.readouterr()
+
+    assert main(("artifact-verify", str(secure))) == 0
+    verified = capsys.readouterr().out
+    assert "Schema: agentsecbench.result.v1" in verified
+    assert "Tasks: 30" in verified
+
+    assert main(("artifact-compare", str(unsafe), str(secure), "--json")) == 0
+    comparison = json.loads(capsys.readouterr().out)
+    assert comparison["same_catalog"] is True
+    assert comparison["attack_success_delta"] == -1.0
+
+
+def test_artifact_cli_rejects_invalid_input(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{}", encoding="utf-8")
+
+    assert main(("artifact-verify", str(invalid))) == 1
+    assert "verification failed" in capsys.readouterr().err
 
 
 def test_bailian_evaluate_cli_rejects_bad_task_selection(

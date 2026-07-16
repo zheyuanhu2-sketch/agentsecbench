@@ -8,7 +8,8 @@ Keep the GitHub repository private until every required item is complete.
 - [x] Pin dependencies in `uv.lock` and enable dependency update review.
 - [ ] Run a secret scan over the complete Git history.
 - [ ] Verify README claims against checked-in commands and artifacts.
-- [ ] Add a stable benchmark schema and changelog before accepting external scenarios.
+- [x] Add a stable result-artifact schema and changelog.
+- [ ] Add a stable external-scenario schema before accepting external scenarios.
 - [ ] Document responsible disclosure and maintainer contact channels.
 - [ ] Create a signed or checksummed v0.2 release candidate.
 - [ ] Review the repository visibility setting immediately before publication.
