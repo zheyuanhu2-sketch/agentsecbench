@@ -45,6 +45,8 @@ REQUIRED_PROJECT_FILES = (
     ".github/ISSUE_TEMPLATE/benchmark_proposal.yml",
     ".github/ISSUE_TEMPLATE/bug_report.yml",
     ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
     "docs/PUBLICATION_CHECKLIST.md",
     "docs/SHOWCASE.md",
     "examples/showcase/manifest.json",
@@ -225,6 +227,27 @@ def _check_synthetic_catalogs() -> None:
                 _fail(f"scenario {scenario.task_id} contains a non-synthetic sensitive value")
 
 
+def _check_release_workflow_contract() -> None:
+    workflow = _read_text(".github/workflows/release.yml")
+    required_snippets = (
+        "workflow_dispatch:",
+        "RELEASE_TAG: ${{ inputs.tag || github.ref_name }}",
+        "ref: ${{ env.RELEASE_TAG }}",
+        'gh release view "$RELEASE_TAG"',
+        'tool_dir="$RUNNER_TEMP/agentsecbench-tools"',
+        "Require clean source tree before build",
+        '"${RELEASE_TAG}"',
+    )
+    if any(snippet not in workflow for snippet in required_snippets):
+        _fail("release workflow is missing an immutable recovery or build-hygiene control")
+    if workflow.count('tool_dir="$RUNNER_TEMP/agentsecbench-tools"') < 2:
+        _fail("release scanners do not share the runner-temporary tool directory")
+    if '--output "$archive"' in workflow:
+        _fail("release workflow downloads a scanner archive into the source tree")
+    if "GITHUB_REF_NAME" in workflow:
+        _fail("release workflow uses the event ref name instead of the validated release tag")
+
+
 def check_source(*, expected_tag: str | None = None) -> str:
     """Validate source-level release invariants and return the version."""
 
@@ -239,6 +262,7 @@ def check_source(*, expected_tag: str | None = None) -> str:
     _check_local_markdown_links()
     _check_readme_commands()
     _check_synthetic_catalogs()
+    _check_release_workflow_contract()
     return version
 
 
@@ -360,6 +384,8 @@ def _check_sdist(path: Path, version: str) -> None:
                 f"{prefix}/.github/ISSUE_TEMPLATE/benchmark_proposal.yml",
                 f"{prefix}/.github/ISSUE_TEMPLATE/bug_report.yml",
                 f"{prefix}/.github/ISSUE_TEMPLATE/config.yml",
+                f"{prefix}/.github/workflows/ci.yml",
+                f"{prefix}/.github/workflows/release.yml",
                 f"{prefix}/README.md",
                 f"{prefix}/SECURITY.md",
                 f"{prefix}/PKG-INFO",

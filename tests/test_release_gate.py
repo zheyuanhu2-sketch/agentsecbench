@@ -29,6 +29,10 @@ def test_source_release_gate_rejects_mismatched_tag() -> None:
         gate.check_source(expected_tag="v999.0.0")
 
 
+def test_release_workflow_recovery_and_build_hygiene_contract() -> None:
+    _gate()._check_release_workflow_contract()
+
+
 def test_release_critical_files_are_tracked() -> None:
     gate = _gate()
     expected_relative = {
