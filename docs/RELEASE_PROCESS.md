@@ -26,10 +26,13 @@ fixture conventions. CI repeats tests on Python 3.11, 3.12, 3.13, and 3.14.
 ## Reproducible package gate
 
 CI derives `SOURCE_DATE_EPOCH` from the release commit and performs two independent `uv build`
-runs. `scripts/release_gate.py artifacts` validates archive paths, exact package metadata, license,
-console entry point, runtime/source contents, and stale output exclusion. The `compare` subcommand
-then requires both wheels and both source distributions to be byte-identical. Finally, CI installs
-the wheel into an isolated environment and runs the deterministic comparison.
+runs into separate runner-temporary directories outside the source tree. Keeping outputs outside
+the source tree is mandatory: an in-tree first build would change the file set seen by the second
+source-distribution build. `scripts/release_gate.py artifacts` validates archive paths, exact
+package metadata, license, console entry point, runtime/source contents, and stale output
+exclusion. The `compare` subcommand then requires both wheels and both source distributions to be
+byte-identical. Finally, CI installs the wheel into an isolated environment and runs the
+deterministic comparison.
 
 ## Security gate
 

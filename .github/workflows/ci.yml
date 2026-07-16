@@ -104,13 +104,18 @@ jobs:
         run: |
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           export SOURCE_DATE_EPOCH
-          uv build --out-dir dist-a --no-create-gitignore
-          uv build --out-dir dist-b --no-create-gitignore
-      - run: uv run python scripts/release_gate.py artifacts dist-a
-      - run: uv run python scripts/release_gate.py artifacts dist-b
-      - run: uv run python scripts/release_gate.py compare dist-a dist-b
+          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-a" --no-create-gitignore
+          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-b" --no-create-gitignore
+      - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-a"
+      - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-b"
+      - run: >
+          uv run python scripts/release_gate.py compare
+          "$RUNNER_TEMP/agentsecbench-dist-a"
+          "$RUNNER_TEMP/agentsecbench-dist-b"
       - name: Install and execute the wheel in an isolated environment
         run: |
-          uv venv --python 3.11 .release-venv
-          uv pip install --python .release-venv/bin/python dist-a/*.whl
-          .release-venv/bin/agentsecbench compare
+          uv venv --python 3.11 "$RUNNER_TEMP/agentsecbench-release-venv"
+          uv pip install \
+            --python "$RUNNER_TEMP/agentsecbench-release-venv/bin/python" \
+            "$RUNNER_TEMP/agentsecbench-dist-a/"*.whl
+          "$RUNNER_TEMP/agentsecbench-release-venv/bin/agentsecbench" compare

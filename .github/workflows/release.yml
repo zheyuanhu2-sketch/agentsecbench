@@ -64,28 +64,40 @@ jobs:
         run: |
           SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           export SOURCE_DATE_EPOCH
-          uv build --out-dir dist-a --no-create-gitignore
-          uv build --out-dir dist-b --no-create-gitignore
-      - run: uv run python scripts/release_gate.py artifacts dist-a
-      - run: uv run python scripts/release_gate.py artifacts dist-b
-      - run: uv run python scripts/release_gate.py compare dist-a dist-b
+          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-a" --no-create-gitignore
+          uv build --out-dir "$RUNNER_TEMP/agentsecbench-dist-b" --no-create-gitignore
+      - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-a"
+      - run: uv run python scripts/release_gate.py artifacts "$RUNNER_TEMP/agentsecbench-dist-b"
+      - run: >
+          uv run python scripts/release_gate.py compare
+          "$RUNNER_TEMP/agentsecbench-dist-a"
+          "$RUNNER_TEMP/agentsecbench-dist-b"
       - name: Prepare checksummed release files
         run: |
-          mkdir release
-          cp dist-a/*.whl dist-a/*.tar.gz release/
-          uv run python scripts/release_gate.py checksums dist-a release/SHA256SUMS
-          cd release
+          mkdir "$RUNNER_TEMP/agentsecbench-release"
+          cp \
+            "$RUNNER_TEMP/agentsecbench-dist-a/"*.whl \
+            "$RUNNER_TEMP/agentsecbench-dist-a/"*.tar.gz \
+            "$RUNNER_TEMP/agentsecbench-release/"
+          uv run python scripts/release_gate.py checksums \
+            "$RUNNER_TEMP/agentsecbench-dist-a" \
+            "$RUNNER_TEMP/agentsecbench-release/SHA256SUMS"
+          cd "$RUNNER_TEMP/agentsecbench-release"
           sha256sum --check SHA256SUMS --strict
       - name: Verify the release wheel in an isolated environment
         run: |
-          uv venv --python 3.11 .release-venv
-          uv pip install --python .release-venv/bin/python release/*.whl
-          .release-venv/bin/agentsecbench compare
+          uv venv --python 3.11 "$RUNNER_TEMP/agentsecbench-release-venv"
+          uv pip install \
+            --python "$RUNNER_TEMP/agentsecbench-release-venv/bin/python" \
+            "$RUNNER_TEMP/agentsecbench-release/"*.whl
+          "$RUNNER_TEMP/agentsecbench-release-venv/bin/agentsecbench" compare
       - name: Publish immutable GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release/* \
+          gh release create \
+            "${GITHUB_REF_NAME}" \
+            "$RUNNER_TEMP/agentsecbench-release/"* \
             --verify-tag \
             --title "AgentSecBench ${GITHUB_REF_NAME}" \
             --generate-notes
