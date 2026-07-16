@@ -75,7 +75,14 @@ Only after every applicable pre-tag item in `PUBLICATION_CHECKLIST.md` is comple
    ```
 
 The workflow refuses a tag that differs from the package version. A failed workflow must be fixed
-with a new commit and version/tag; published release assets are not silently replaced.
+without moving the tag. If no Release, asset, or attestation was published, the corrected workflow
+on the default branch may be manually dispatched against that same existing tag; the workflow
+checks out the immutable tag target and refuses a tag that already has a Release. Once any release
+asset exists, recovery requires a new version and tag; published assets are never replaced.
+
+Release-only scanner archives and executables must remain under `RUNNER_TEMP`. Immediately before
+building, the workflow requires a clean Git worktree so non-ignored temporary files cannot enter
+the source distribution.
 
 ## GitHub publication transition
 
