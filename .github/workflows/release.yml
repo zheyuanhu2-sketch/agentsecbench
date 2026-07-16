@@ -62,7 +62,8 @@ jobs:
           ./gitleaks git --redact --no-banner --verbose .
       - name: Build twice from a fixed source epoch
         run: |
-          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          export SOURCE_DATE_EPOCH
           uv build --out-dir dist-a --no-create-gitignore
           uv build --out-dir dist-b --no-create-gitignore
       - run: uv run python scripts/release_gate.py artifacts dist-a
