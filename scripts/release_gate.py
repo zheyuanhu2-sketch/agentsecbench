@@ -212,6 +212,7 @@ def _check_synthetic_catalogs() -> None:
     catalogs = (
         build_catalog(),
         load_scenario_catalog(ROOT / "examples" / "scenario-catalog-v1.json"),
+        load_scenario_catalog(ROOT / "examples" / "coding-agent-scenarios-v1.json"),
     )
     for catalog in catalogs:
         for scenario in catalog:

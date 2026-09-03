@@ -1,4 +1,5 @@
 import importlib.util
+import shutil
 from pathlib import Path
 from types import ModuleType
 from typing import cast
@@ -41,6 +42,24 @@ def test_readme_exposes_coding_agent_reviewer_route() -> None:
     assert (
         "uv run agentsecbench catalog-validate examples/coding-agent-scenarios-v1.json" in readme
     )
+
+
+def test_synthetic_catalog_gate_checks_coding_agent_catalog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    examples = tmp_path / "examples"
+    examples.mkdir()
+    shutil.copy(ROOT / "examples" / "scenario-catalog-v1.json", examples)
+    source = (ROOT / "examples" / "coding-agent-scenarios-v1.json").read_text(encoding="utf-8")
+    (examples / "coding-agent-scenarios-v1.json").write_text(
+        source.replace("Synthetic trusted guide", "Synthetic owner dev@real.example", 1),
+        encoding="utf-8",
+    )
+    gate = _gate()
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+
+    with pytest.raises(gate.ReleaseGateError, match="non-synthetic email domain"):
+        gate._check_synthetic_catalogs()
 
 
 def test_release_critical_files_are_tracked() -> None:
