@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -17,8 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
     ),
 )
 def test_reproducible_evidence_is_checked_out_with_lf(relative_path: str) -> None:
-    completed = subprocess.run(
-        ["git", "check-attr", "eol", "--", relative_path],
+    git = shutil.which("git")
+    assert git is not None
+    completed = subprocess.run(  # noqa: S603 - fixed executable and parameterized constant paths
+        [git, "check-attr", "eol", "--", relative_path],
         cwd=ROOT,
         check=True,
         capture_output=True,

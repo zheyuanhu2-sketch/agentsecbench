@@ -35,7 +35,7 @@ def _artifact_digest(manifest: Mapping[str, object], name: str) -> str:
 
 def _metric_row(label: str, unsafe: float, secure: float) -> str:
     return (
-        f"<tr><th scope=\"row\">{escape(label)}</th>"
+        f'<tr><th scope="row">{escape(label)}</th>'
         f"<td>{_percent(unsafe)}</td><td>{_percent(secure)}</td></tr>"
     )
 
@@ -47,7 +47,7 @@ def _task_rows(unsafe: ResultArtifact, secure: ResultArtifact) -> str:
             raise ReportError("artifact task selection is inconsistent")
         rows.append(
             "<tr>"
-            f"<th scope=\"row\"><code>{escape(unsafe_task.task_id)}</code></th>"
+            f'<th scope="row"><code>{escape(unsafe_task.task_id)}</code></th>'
             f"<td>{escape(unsafe_task.kind)}</td>"
             f"<td>{_yes_no(unsafe_task.utility_success)}</td>"
             f"<td>{_yes_no(unsafe_task.attack_success)}</td>"
@@ -89,9 +89,7 @@ def render_showcase_html(
                 unsafe.metrics.false_block_rate,
                 secure.metrics.false_block_rate,
             ),
-            _metric_row(
-                "Leakage", unsafe.metrics.leakage_rate, secure.metrics.leakage_rate
-            ),
+            _metric_row("Leakage", unsafe.metrics.leakage_rate, secure.metrics.leakage_rate),
         )
     )
     task_rows = _task_rows(unsafe, secure)

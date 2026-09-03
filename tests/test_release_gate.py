@@ -39,9 +39,7 @@ def test_readme_exposes_coding_agent_reviewer_route() -> None:
 
     assert "examples/showcase/index.html" in readme
     assert "docs/CODING_AGENT_SCENARIOS.md" in readme
-    assert (
-        "uv run agentsecbench catalog-validate examples/coding-agent-scenarios-v1.json" in readme
-    )
+    assert "uv run agentsecbench catalog-validate examples/coding-agent-scenarios-v1.json" in readme
 
 
 def test_synthetic_catalog_gate_checks_coding_agent_catalog(
