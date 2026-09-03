@@ -33,6 +33,16 @@ def test_release_workflow_recovery_and_build_hygiene_contract() -> None:
     _gate()._check_release_workflow_contract()
 
 
+def test_readme_exposes_coding_agent_reviewer_route() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "examples/showcase/index.html" in readme
+    assert "docs/CODING_AGENT_SCENARIOS.md" in readme
+    assert (
+        "uv run agentsecbench catalog-validate examples/coding-agent-scenarios-v1.json" in readme
+    )
+
+
 def test_release_critical_files_are_tracked() -> None:
     gate = _gate()
     expected_relative = {
