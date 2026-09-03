@@ -1,4 +1,5 @@
 import importlib.util
+import shutil
 from pathlib import Path
 from types import ModuleType
 from typing import cast
@@ -33,6 +34,32 @@ def test_release_workflow_recovery_and_build_hygiene_contract() -> None:
     _gate()._check_release_workflow_contract()
 
 
+def test_readme_exposes_coding_agent_reviewer_route() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "examples/showcase/index.html" in readme
+    assert "docs/CODING_AGENT_SCENARIOS.md" in readme
+    assert "uv run agentsecbench catalog-validate examples/coding-agent-scenarios-v1.json" in readme
+
+
+def test_synthetic_catalog_gate_checks_coding_agent_catalog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    examples = tmp_path / "examples"
+    examples.mkdir()
+    shutil.copy(ROOT / "examples" / "scenario-catalog-v1.json", examples)
+    source = (ROOT / "examples" / "coding-agent-scenarios-v1.json").read_text(encoding="utf-8")
+    (examples / "coding-agent-scenarios-v1.json").write_text(
+        source.replace("Synthetic trusted guide", "Synthetic owner dev@real.example", 1),
+        encoding="utf-8",
+    )
+    gate = _gate()
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+
+    with pytest.raises(gate.ReleaseGateError, match="non-synthetic email domain"):
+        gate._check_synthetic_catalogs()
+
+
 def test_release_critical_files_are_tracked() -> None:
     gate = _gate()
     expected_relative = {
@@ -41,13 +68,19 @@ def test_release_critical_files_are_tracked() -> None:
         "README.md",
         "SECURITY.md",
         "docs/RELEASE_EVIDENCE_V1.0.0.md",
+        "docs/CODING_AGENT_SCENARIOS.md",
         "docs/SHOWCASE.md",
+        "examples/coding-agent-scenarios-v1.json",
+        "examples/showcase/index.html",
         "examples/showcase/manifest.json",
         "examples/showcase/secure.result.json",
         "examples/showcase/unsafe.result.json",
         "pyproject.toml",
         "scripts/showcase.py",
+        "src/agentsecbench/report.py",
         "src/agentsecbench/py.typed",
+        "tests/test_coding_agent_catalog.py",
+        "tests/test_report.py",
         "uv.lock",
     }
 

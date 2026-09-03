@@ -48,14 +48,20 @@ REQUIRED_PROJECT_FILES = (
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     "docs/PUBLICATION_CHECKLIST.md",
+    "docs/CODING_AGENT_SCENARIOS.md",
     "docs/RELEASE_EVIDENCE_V1.0.0.md",
     "docs/SHOWCASE.md",
+    "examples/coding-agent-scenarios-v1.json",
+    "examples/showcase/index.html",
     "examples/showcase/manifest.json",
     "examples/showcase/secure.result.json",
     "examples/showcase/unsafe.result.json",
     "pyproject.toml",
     "scripts/showcase.py",
+    "src/agentsecbench/report.py",
     "src/agentsecbench/py.typed",
+    "tests/test_coding_agent_catalog.py",
+    "tests/test_report.py",
     "uv.lock",
 )
 
@@ -206,6 +212,7 @@ def _check_synthetic_catalogs() -> None:
     catalogs = (
         build_catalog(),
         load_scenario_catalog(ROOT / "examples" / "scenario-catalog-v1.json"),
+        load_scenario_catalog(ROOT / "examples" / "coding-agent-scenarios-v1.json"),
     )
     for catalog in catalogs:
         for scenario in catalog:
@@ -391,9 +398,12 @@ def _check_sdist(path: Path, version: str) -> None:
                 f"{prefix}/SECURITY.md",
                 f"{prefix}/PKG-INFO",
                 f"{prefix}/docs/DATA_REVIEW.md",
+                f"{prefix}/docs/CODING_AGENT_SCENARIOS.md",
                 f"{prefix}/docs/RELEASE_EVIDENCE_V1.0.0.md",
                 f"{prefix}/docs/RELEASE_PROCESS.md",
                 f"{prefix}/docs/SHOWCASE.md",
+                f"{prefix}/examples/coding-agent-scenarios-v1.json",
+                f"{prefix}/examples/showcase/index.html",
                 f"{prefix}/examples/showcase/manifest.json",
                 f"{prefix}/examples/showcase/secure.result.json",
                 f"{prefix}/examples/showcase/unsafe.result.json",
@@ -401,8 +411,11 @@ def _check_sdist(path: Path, version: str) -> None:
                 f"{prefix}/scripts/release_gate.py",
                 f"{prefix}/scripts/showcase.py",
                 f"{prefix}/src/agentsecbench/__init__.py",
+                f"{prefix}/src/agentsecbench/report.py",
                 f"{prefix}/src/agentsecbench/py.typed",
                 f"{prefix}/tests/test_catalog.py",
+                f"{prefix}/tests/test_coding_agent_catalog.py",
+                f"{prefix}/tests/test_report.py",
             }
             if not required <= set(names):
                 _fail("source distribution is missing required source or review files")

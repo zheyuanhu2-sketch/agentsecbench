@@ -2,6 +2,16 @@
 
 All notable changes use semantic versioning.
 
+## Unreleased
+
+- Add five paired synthetic coding-agent threat families covering repository instructions, issue
+  content, generated fixtures, dependency findings, and pull-request documents.
+- Add a deterministic, self-contained HTML report generated from canonical content-free result
+  artifacts, with semantic tables and explicit interpretation boundaries.
+- Preserve byte-reproducible showcase evidence across default Windows and Linux Git checkouts with
+  an enforced LF attribute contract.
+- Add a 60-second reviewer route without making unsupported production-model or adoption claims.
+
 ## 1.0.0 - 2026-07-16
 
 - Publish the first stable AgentSecBench release while keeping the frozen v0.1 catalog fingerprint,
