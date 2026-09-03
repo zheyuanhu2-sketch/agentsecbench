@@ -25,12 +25,18 @@ def test_checked_in_showcase_is_current_and_content_free() -> None:
     showcase.check_showcase()
     payload = b"".join(
         path.read_bytes()
-        for path in (showcase.UNSAFE_PATH, showcase.SECURE_PATH, showcase.MANIFEST_PATH)
+        for path in (
+            showcase.UNSAFE_PATH,
+            showcase.SECURE_PATH,
+            showcase.MANIFEST_PATH,
+            showcase.HTML_PATH,
+        )
     )
 
     assert b"SYNTHETIC-SECRET" not in payload
     assert b"Untrusted content" not in payload
     assert b"Milestone 1 is complete" not in payload
+    assert b"<caption>Reference policy comparison</caption>" in showcase.HTML_PATH.read_bytes()
 
 
 def test_showcase_manifest_matches_validated_artifacts() -> None:
@@ -59,6 +65,7 @@ def test_showcase_rejects_unexpected_directory_entry(
     monkeypatch.setattr(showcase, "UNSAFE_PATH", showcase_directory / "unsafe.result.json")
     monkeypatch.setattr(showcase, "SECURE_PATH", showcase_directory / "secure.result.json")
     monkeypatch.setattr(showcase, "MANIFEST_PATH", showcase_directory / "manifest.json")
+    monkeypatch.setattr(showcase, "HTML_PATH", showcase_directory / "index.html")
     monkeypatch.setattr(showcase, "DOCUMENT_PATH", tmp_path / "docs" / "SHOWCASE.md")
     showcase.generate_showcase()
     (showcase_directory / "unexpected").mkdir()

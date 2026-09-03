@@ -24,6 +24,7 @@ from agentsecbench.artifacts import (
 from agentsecbench.catalog import build_catalog
 from agentsecbench.evaluator import evaluate_catalog
 from agentsecbench.policy import SecurePolicy, UnsafePolicy
+from agentsecbench.report import render_showcase_html
 from agentsecbench.validation import catalog_fingerprint
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,9 +32,12 @@ SHOWCASE_DIRECTORY = ROOT / "examples" / "showcase"
 UNSAFE_PATH = SHOWCASE_DIRECTORY / "unsafe.result.json"
 SECURE_PATH = SHOWCASE_DIRECTORY / "secure.result.json"
 MANIFEST_PATH = SHOWCASE_DIRECTORY / "manifest.json"
+HTML_PATH = SHOWCASE_DIRECTORY / "index.html"
 DOCUMENT_PATH = ROOT / "docs" / "SHOWCASE.md"
 SHOWCASE_SCHEMA_VERSION = "agentsecbench.showcase.v1"
-EXPECTED_SHOWCASE_FILES = frozenset({"manifest.json", "secure.result.json", "unsafe.result.json"})
+EXPECTED_SHOWCASE_FILES = frozenset(
+    {"index.html", "manifest.json", "secure.result.json", "unsafe.result.json"}
+)
 
 
 class ShowcaseError(RuntimeError):
@@ -215,6 +219,7 @@ def expected_outputs() -> dict[Path, bytes]:
         UNSAFE_PATH: unsafe_payload,
         SECURE_PATH: secure_payload,
         MANIFEST_PATH: manifest_payload,
+        HTML_PATH: render_showcase_html(unsafe, secure, manifest),
         DOCUMENT_PATH: _showcase_markdown(unsafe, secure, manifest),
     }
 
@@ -257,7 +262,7 @@ def check_showcase() -> None:
     """Require checked-in showcase files to match generated evidence exactly."""
 
     expected = expected_outputs()
-    if SHOWCASE_DIRECTORY.is_symlink() or DOCUMENT_PATH.is_symlink():
+    if SHOWCASE_DIRECTORY.is_symlink() or DOCUMENT_PATH.is_symlink() or HTML_PATH.is_symlink():
         raise ShowcaseError("showcase paths must not use symbolic links")
     try:
         actual_names = frozenset(path.name for path in SHOWCASE_DIRECTORY.iterdir())
