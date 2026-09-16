@@ -140,6 +140,10 @@ publication gate is documented in
 The verified public-release evidence is retained in
 [`docs/RELEASE_EVIDENCE_V1.0.0.md`](docs/RELEASE_EVIDENCE_V1.0.0.md).
 
+Contributions are welcome through the [contribution guide](CONTRIBUTING.md). Planned work is kept
+in the [public roadmap](docs/ROADMAP.md), and bounded proposals can be discussed in the
+[issue tracker](https://github.com/zheyuanhu2-sketch/agentsecbench/issues).
+
 ## Safety
 
 All bundled data is synthetic. Do not add credentials, real email, personal data, malware, or
