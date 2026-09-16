@@ -215,7 +215,7 @@ $required = @(
 $required | ForEach-Object {
   if (-not (Test-Path -LiteralPath $_ -PathType Leaf)) { throw "Missing file: $_" }
 }
-if (rg -n "currently private" CONTRIBUTING.md README.md docs .github) {
+if (rg -n "currently private" CONTRIBUTING.md README.md docs/ROADMAP.md .github/PULL_REQUEST_TEMPLATE.md) {
   throw 'Active documentation still describes the repository as currently private'
 }
 rg -n "CONTRIBUTING.md|docs/ROADMAP.md|agentsecbench/issues" README.md
